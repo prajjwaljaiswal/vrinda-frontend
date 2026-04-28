@@ -1,6 +1,6 @@
 'use client';
 export const dynamic = 'force-dynamic';
-import { useCallback, useState } from 'react';
+import { Suspense, useCallback, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
@@ -8,6 +8,14 @@ import { api, setToken } from '@/lib/api';
 import { GoogleButton } from '@/components/auth/GoogleButton';
 
 export default function RegisterPage() {
+  return (
+    <Suspense fallback={null}>
+      <RegisterInner />
+    </Suspense>
+  );
+}
+
+function RegisterInner() {
   const router = useRouter();
   const params = useSearchParams();
   const initialRole = params.get('role') === 'vendor' ? 'VENDOR' : 'CUSTOMER';
