@@ -1,0 +1,127 @@
+'use client';
+import Link from 'next/link';
+import { useState } from 'react';
+
+export interface ProductCardData {
+  id: string;
+  name: string;
+  price: string | number;
+  mrp?: string | number | null;
+  images: string[];
+  vendor: { shopName: string };
+  rating?: number;
+  reviewCount?: number;
+  freeShipping?: boolean;
+  badge?: string | null;
+  variationCombos?: { price: string | number | null }[];
+}
+
+function formatINR(v: string | number) {
+  return `₹${Number(v).toLocaleString('en-IN')}`;
+}
+
+export function ProductCard({ product }: { product: ProductCardData }) {
+  const [fav, setFav] = useState(false);
+  const rating = product.rating ?? 0;
+  const reviews = product.reviewCount ?? 0;
+  const hasMrp = product.mrp && Number(product.mrp) > Number(product.price);
+  const discount = hasMrp
+    ? Math.round(((Number(product.mrp) - Number(product.price)) / Number(product.mrp)) * 100)
+    : null;
+
+  // Etsy-style "from ₹X" / "₹X+" when variation combos have multiple prices.
+  const comboPrices = (product.variationCombos ?? [])
+    .map((c) => (c.price != null ? Number(c.price) : Number(product.price)))
+    .filter((n) => Number.isFinite(n) && n > 0);
+  const minPrice = comboPrices.length ? Math.min(...comboPrices) : Number(product.price);
+  const maxPrice = comboPrices.length ? Math.max(...comboPrices) : Number(product.price);
+  const hasVariationRange = comboPrices.length > 0 && minPrice !== maxPrice;
+  const displayPrice = hasVariationRange ? minPrice : Number(product.price);
+
+  return (
+    <Link
+      href={`/products/${product.id}`}
+      className="group relative block rounded-md overflow-hidden bg-transparent transition hover:shadow-pop"
+    >
+      <div className="relative aspect-square bg-stone-100 rounded-md overflow-hidden">
+        {product.images[0] ? (
+          <img
+            src={product.images[0]}
+            alt={product.name}
+            className="w-full h-full object-cover transition group-hover:scale-[1.02]"
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center text-ink-300 text-xs">No image</div>
+        )}
+
+        {(product.badge || discount) && (
+          <span className="absolute top-2 left-2 badge-sale">
+            {product.badge ?? `Sale −${discount}%`}
+          </span>
+        )}
+
+        <button
+          type="button"
+          aria-label="Save to favorites"
+          onClick={(e) => {
+            e.preventDefault();
+            setFav((f) => !f);
+          }}
+          className="absolute top-2 right-2 h-9 w-9 rounded-full bg-white/95 shadow-card flex items-center justify-center hover:scale-105 transition"
+        >
+          <HeartIcon filled={fav} />
+        </button>
+      </div>
+
+      <div className="pt-3 px-1 pb-3">
+        <p className="text-xs text-ink-500 truncate">{product.vendor.shopName}</p>
+        <h3 className="text-sm text-ink-900 mt-0.5 line-clamp-2 min-h-[2.5em]">{product.name}</h3>
+        <div className="flex items-center gap-1.5 mt-1">
+          <Stars value={rating} />
+          <span className="text-xs text-ink-500">({reviews})</span>
+        </div>
+        <div className="mt-1 flex items-baseline gap-2">
+          <span className="text-base font-bold text-ink-900">
+            {formatINR(displayPrice)}{hasVariationRange && '+'}
+          </span>
+          {hasMrp && (
+            <span className="text-xs text-ink-500 line-through">{formatINR(product.mrp!)}</span>
+          )}
+        </div>
+        {product.freeShipping && (
+          <p className="text-xs text-success font-medium mt-0.5">Free shipping</p>
+        )}
+      </div>
+    </Link>
+  );
+}
+
+export function Stars({ value, size = 14 }: { value: number; size?: number }) {
+  const full = Math.round(value);
+  return (
+    <span className="inline-flex" aria-label={`${value} stars`}>
+      {[0, 1, 2, 3, 4].map((i) => (
+        <svg
+          key={i}
+          width={size}
+          height={size}
+          viewBox="0 0 24 24"
+          fill={i < full ? 'currentColor' : 'none'}
+          stroke="currentColor"
+          strokeWidth="1.6"
+          className="text-brand-600"
+        >
+          <path d="M12 2.5l2.95 6.4 6.55.6-4.95 4.55 1.4 6.45L12 17.6l-5.95 2.9 1.4-6.45L2.5 9.5l6.55-.6L12 2.5z" />
+        </svg>
+      ))}
+    </span>
+  );
+}
+
+function HeartIcon({ filled }: { filled: boolean }) {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill={filled ? '#F1641E' : 'none'} stroke={filled ? '#F1641E' : '#222'} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+    </svg>
+  );
+}
