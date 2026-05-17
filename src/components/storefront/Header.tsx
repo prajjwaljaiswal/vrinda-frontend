@@ -4,17 +4,11 @@ import { useRouter, usePathname } from 'next/navigation';
 import { useState } from 'react';
 import { useCart } from '@/lib/cart';
 import { AccountMenu } from './AccountMenu';
+import { SearchAutosuggest } from '@/components/search/SearchAutosuggest';
+import { MegaMenu } from './MegaMenu';
 
-const CATEGORIES = [
-  { label: 'Necklaces', slug: 'necklaces' },
-  { label: 'Earrings', slug: 'earrings' },
-  { label: 'Rings', slug: 'rings' },
-  { label: 'Bracelets', slug: 'bracelets' },
-  { label: 'Bridal', slug: 'bridal' },
-  { label: 'Gifting', slug: 'gifting' },
-  { label: 'New arrivals', slug: 'new' },
-  { label: 'Under ₹2,000', slug: 'under-2000' },
-];
+const ALGOLIA_READY =
+  !!process.env.NEXT_PUBLIC_ALGOLIA_APP_ID && !!process.env.NEXT_PUBLIC_ALGOLIA_SEARCH_KEY;
 
 export function Header() {
   const router = useRouter();
@@ -40,28 +34,32 @@ export function Header() {
           <span className="font-display text-3xl text-brand-600 leading-none">Jewel</span>
         </Link>
 
-        <form onSubmit={submit} className="flex-1 max-w-3xl">
-          <div className="flex items-center h-12 rounded-pill border border-ink-900 focus-within:ring-2 focus-within:ring-brand-600 overflow-hidden bg-white">
-            <input
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-              placeholder="Search for anything"
-              className="flex-1 h-full px-5 text-sm bg-transparent focus:outline-none"
-            />
-            <button
-              type="submit"
-              aria-label="Search"
-              className="m-1 h-10 w-10 rounded-full bg-brand-600 text-white flex items-center justify-center hover:bg-brand-700 transition"
-            >
-              <SearchIcon />
-            </button>
-          </div>
-        </form>
+        {ALGOLIA_READY ? (
+          <SearchAutosuggest className="flex-1 max-w-3xl" />
+        ) : (
+          <form onSubmit={submit} className="flex-1 max-w-3xl">
+            <div className="flex items-center h-12 rounded-pill border border-ink-900 focus-within:ring-2 focus-within:ring-brand-600 overflow-hidden bg-white">
+              <input
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+                placeholder="Search for anything"
+                className="flex-1 h-full px-5 text-sm bg-transparent focus:outline-none"
+              />
+              <button
+                type="submit"
+                aria-label="Search"
+                className="m-1 h-10 w-10 rounded-full bg-brand-600 text-white flex items-center justify-center hover:bg-brand-700 transition"
+              >
+                <SearchIcon />
+              </button>
+            </div>
+          </form>
+        )}
 
         <nav className="hidden md:flex items-center gap-5 text-sm">
           <AccountMenu />
           <Link href="/vendor" className="hover:text-brand-700">Sell</Link>
-          <Link href="/checkout" className="relative inline-flex items-center" aria-label="Cart">
+          <Link href="/cart" className="relative inline-flex items-center" aria-label="Cart">
             <CartIcon />
             {itemCount > 0 && (
               <span className="absolute -top-1.5 -right-2 min-w-[18px] h-[18px] rounded-full bg-brand-600 text-white text-[11px] font-semibold flex items-center justify-center px-1">
@@ -72,22 +70,8 @@ export function Header() {
         </nav>
       </div>
 
-      {/* Row 2 — category strip */}
-      <div className="border-t border-line">
-        <div className="max-w-container mx-auto px-6">
-          <div className="flex items-center gap-6 h-11 overflow-x-auto no-scrollbar text-sm">
-            {CATEGORIES.map((c) => (
-              <Link
-                key={c.slug}
-                href={`/products?category=${c.slug}`}
-                className="whitespace-nowrap text-ink-700 hover:text-ink-900 hover:underline underline-offset-8 decoration-2 decoration-brand-600"
-              >
-                {c.label}
-              </Link>
-            ))}
-          </div>
-        </div>
-      </div>
+      {/* Row 2 — category mega-menu */}
+      <MegaMenu />
     </header>
   );
 }

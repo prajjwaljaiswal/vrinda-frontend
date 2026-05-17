@@ -4,8 +4,9 @@ import { StepHeader, StepProps, Field } from '../StepShell';
 import { DraftCombo, DraftVariation } from '../types';
 
 const MAX_TAGS = 13;
-const MAX_VARIATIONS = 2;
-const MAX_OPTIONS_PER_VARIATION = 8;
+const MAX_VARIATIONS = 3;
+const MAX_OPTIONS_PER_VARIATION = 10;
+const COMBO_SOFT_CAP = 100;
 
 const tempId = () => `t_${Math.random().toString(36).slice(2, 10)}`;
 
@@ -175,6 +176,11 @@ export function OptionsStep({ draft, setDraft }: StepProps) {
             <div className="mt-5">
               <p className="text-sm font-semibold text-ink-900 mb-2">Per-variation pricing & stock</p>
               <p className="text-xs text-ink-500 mb-3">Override price for this combo, or leave blank to use the default. Stock is per combo.</p>
+              {draft.combos.length > COMBO_SOFT_CAP && (
+                <div className="mb-3 rounded-md border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
+                  <strong>{draft.combos.length} combinations.</strong> That's a lot to manage — consider splitting into separate listings (e.g. one per metal) for a cleaner buyer experience.
+                </div>
+              )}
               <div className="border border-line rounded-md overflow-hidden">
                 <table className="w-full text-sm">
                   <thead className="bg-canvas">

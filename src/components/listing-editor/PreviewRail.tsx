@@ -41,6 +41,27 @@ export function PreviewRail({ draft }: { draft: ListingDraft }) {
         <p className="text-base font-bold text-ink-900 mt-1">
           {draft.price ? `₹${Number(draft.price).toLocaleString('en-IN')}` : <span className="text-ink-400 font-normal">₹—</span>}
         </p>
+        {(() => {
+          const badges: string[] = [];
+          const purityLabel: Record<string, string> = {
+            K14: '14K', K18: '18K', K22: '22K', K24: '24K',
+            SILVER_925: 'Silver 925', PLATINUM_950: 'Pt 950', OTHER: '',
+          };
+          if (draft.purity && purityLabel[draft.purity]) badges.push(purityLabel[draft.purity]);
+          if (draft.grossWeightGrams) badges.push(`${draft.grossWeightGrams}g`);
+          if (draft.hallmarked) badges.push('Hallmarked');
+          if (!draft.purity && draft.baseMetal) badges.push(draft.baseMetal);
+          if (draft.plating && draft.plating !== 'None') badges.push(draft.plating);
+          if (draft.nickelFree) badges.push('Nickel-free');
+          if (draft.gender && draft.gender !== 'WOMEN') badges.push(draft.gender[0] + draft.gender.slice(1).toLowerCase());
+          return badges.length > 0 ? (
+            <div className="flex flex-wrap gap-1 mt-2">
+              {badges.slice(0, 4).map((b) => (
+                <span key={b} className="text-[10px] text-brand-700 bg-brand-50 border border-brand-200 rounded-pill px-1.5 py-0.5 font-semibold">{b}</span>
+              ))}
+            </div>
+          ) : null;
+        })()}
         {draft.tags.length > 0 && (
           <div className="flex flex-wrap gap-1 mt-2">
             {draft.tags.slice(0, 4).map((t) => (

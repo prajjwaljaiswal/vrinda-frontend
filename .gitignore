@@ -1,10 +1,25 @@
-node_modules
-.next
-out
+# Dependencies
+node_modules/
+
+# Next.js build output
+.next/
+out/
+
+# Environment — NEVER commit; copy .env.example to .env locally
 .env
 .env.local
+.env.*.local
+
+# Logs
 *.log
-.DS_Store
-.vercel
-next-env.d.ts
+npm-debug.log*
+
+# Build artefacts
 tsconfig.tsbuildinfo
+next-env.d.ts
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

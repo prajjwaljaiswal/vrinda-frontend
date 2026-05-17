@@ -23,10 +23,12 @@ export function AccountMenu() {
   // When the menu is rendered inside a vendor storefront route, link to the
   // vendor-scoped account/orders pages so the theme persists.
   const storeMatch = useMemo(() => pathname.match(/^\/store\/([^/]+)/), [pathname]);
-  const accountHref = storeMatch ? `/store/${storeMatch[1]}/account` : '/account';
-  const ordersHref  = storeMatch ? `/store/${storeMatch[1]}/orders`  : '/orders';
-  const loginHref   = storeMatch ? `/auth/login?next=${encodeURIComponent(pathname)}` : '/auth/login';
-  const registerHref= storeMatch ? `/auth/register?next=${encodeURIComponent(pathname)}` : '/auth/register';
+  const accountHref   = storeMatch ? `/store/${storeMatch[1]}/account`   : '/account';
+  const ordersHref    = storeMatch ? `/store/${storeMatch[1]}/orders`    : '/orders';
+  const wishlistHref  = storeMatch ? `/store/${storeMatch[1]}/wishlist`  : '/account/wishlist';
+  const addressesHref = storeMatch ? `/store/${storeMatch[1]}/addresses` : '/account/addresses';
+  const loginHref     = storeMatch ? `/auth/login?next=${encodeURIComponent(pathname)}` : '/auth/login';
+  const registerHref  = storeMatch ? `/auth/register?next=${encodeURIComponent(pathname)}` : '/auth/register';
 
   useEffect(() => {
     const t = typeof window !== 'undefined' ? window.localStorage.getItem('token') : null;
@@ -91,8 +93,10 @@ export function AccountMenu() {
             <p className="text-sm font-semibold text-ink-900 truncate">{me.name}</p>
             <p className="text-xs text-ink-500 truncate">{me.email}</p>
           </div>
-          <Link href={accountHref} onClick={() => setOpen(false)} className="block px-4 py-2 text-sm hover:bg-canvas">My account</Link>
-          <Link href={ordersHref}  onClick={() => setOpen(false)} className="block px-4 py-2 text-sm hover:bg-canvas">My orders</Link>
+          <Link href={accountHref}   onClick={() => setOpen(false)} className="block px-4 py-2 text-sm hover:bg-canvas">My account</Link>
+          <Link href={ordersHref}    onClick={() => setOpen(false)} className="block px-4 py-2 text-sm hover:bg-canvas">My orders</Link>
+          <Link href={wishlistHref}  onClick={() => setOpen(false)} className="block px-4 py-2 text-sm hover:bg-canvas">Wishlist</Link>
+          <Link href={addressesHref} onClick={() => setOpen(false)} className="block px-4 py-2 text-sm hover:bg-canvas">Addresses</Link>
           {me.role === 'VENDOR' && (
             <Link href="/vendor" onClick={() => setOpen(false)} className="block px-4 py-2 text-sm hover:bg-canvas">Vendor dashboard</Link>
           )}

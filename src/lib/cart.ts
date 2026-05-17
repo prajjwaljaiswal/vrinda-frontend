@@ -1,6 +1,7 @@
 'use client';
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { cartApi, serverItemToLocal, type ServerCart } from './cart-api';
 
 export interface CartItem {
   productId: string;
@@ -23,8 +24,16 @@ export type AddResult =
   | { status: 'added' | 'incremented' }
   | { status: 'conflict'; existingVendor: string; newVendor: string };
 
+function isAuthed(): boolean {
+  if (typeof window === 'undefined') return false;
+  return !!window.localStorage.getItem('token');
+}
+
 interface CartState {
   items: CartItem[];
+  /** Server CartItem.id keyed by local lineKey. Empty for guests. */
+  serverIds: Record<string, string>;
+  hydrating: boolean;
   add: (item: Omit<CartItem, 'quantity'>, qty?: number) => AddResult;
   /** Replaces the cart with a single item from a different vendor. Used after a confirmed conflict. */
   replaceWith: (item: Omit<CartItem, 'quantity'>, qty?: number) => void;
@@ -34,12 +43,30 @@ interface CartState {
   total: () => number;
   vendorId: () => string | null;
   vendorName: () => string | null;
+  /** Fetch the server cart and replace local state. Safe to call on every mount. */
+  hydrate: () => Promise<void>;
+  /** Post current local items to /api/cart/merge then hydrate. Call after login. */
+  mergeAndHydrate: () => Promise<void>;
+}
+
+function applyServerCart(cart: ServerCart): { items: CartItem[]; serverIds: Record<string, string> } {
+  const items: CartItem[] = [];
+  const serverIds: Record<string, string> = {};
+  for (const it of cart.items) {
+    const local = serverItemToLocal(it);
+    items.push(local);
+    serverIds[lineKey(local)] = it.id;
+  }
+  return { items, serverIds };
 }
 
 export const useCart = create<CartState>()(
   persist(
     (set, get) => ({
       items: [],
+      serverIds: {},
+      hydrating: false,
+
       add: (item, qty = 1) => {
         const items = get().items;
 
@@ -63,30 +90,112 @@ export const useCart = create<CartState>()(
               lineKey(i) === key ? { ...i, quantity: i.quantity + qty } : i,
             ),
           });
-          return { status: 'incremented' };
+        } else {
+          set({ items: [...items, { ...item, quantity: qty }] });
         }
-        set({ items: [...items, { ...item, quantity: qty }] });
-        return { status: 'added' };
+
+        if (isAuthed()) {
+          cartApi
+            .add({ productId: item.productId, quantity: qty, variationComboId: item.variationComboId })
+            .then((c) => set(applyServerCart(c)))
+            .catch(() => {
+              get().hydrate();
+            });
+        }
+
+        return existing ? { status: 'incremented' } : { status: 'added' };
       },
-      replaceWith: (item, qty = 1) =>
-        set({ items: [{ ...item, quantity: qty }] }),
-      remove: (productId, variationComboId) => set((s) => {
+
+      replaceWith: (item, qty = 1) => {
+        set({ items: [{ ...item, quantity: qty }], serverIds: {} });
+        if (isAuthed()) {
+          cartApi
+            .clear()
+            .then(() => cartApi.add({ productId: item.productId, quantity: qty, variationComboId: item.variationComboId }))
+            .then((c) => set(applyServerCart(c)))
+            .catch(() => get().hydrate());
+        }
+      },
+
+      remove: (productId, variationComboId) => {
         const key = lineKey({ productId, variationComboId });
-        return { items: s.items.filter((i) => lineKey(i) !== key) };
-      }),
-      setQty: (productId, qty, variationComboId) =>
+        const serverId = get().serverIds[key];
         set((s) => {
-          const key = lineKey({ productId, variationComboId });
+          const { [key]: _omit, ...rest } = s.serverIds;
           return {
-            items: s.items.map((i) => (lineKey(i) === key ? { ...i, quantity: Math.max(1, qty) } : i)),
+            items: s.items.filter((i) => lineKey(i) !== key),
+            serverIds: rest,
           };
-        }),
-      clear: () => set({ items: [] }),
+        });
+        if (isAuthed() && serverId) {
+          cartApi.remove(serverId)
+            .then((c) => set(applyServerCart(c)))
+            .catch(() => get().hydrate());
+        }
+      },
+
+      setQty: (productId, qty, variationComboId) => {
+        const key = lineKey({ productId, variationComboId });
+        const safeQty = Math.max(1, qty);
+        const serverId = get().serverIds[key];
+        set((s) => ({
+          items: s.items.map((i) => (lineKey(i) === key ? { ...i, quantity: safeQty } : i)),
+        }));
+        if (isAuthed() && serverId) {
+          cartApi.updateQty(serverId, safeQty)
+            .then((c) => set(applyServerCart(c)))
+            .catch(() => get().hydrate());
+        }
+      },
+
+      clear: () => {
+        set({ items: [], serverIds: {} });
+        if (isAuthed()) {
+          cartApi.clear().catch(() => {});
+        }
+      },
+
       total: () => get().items.reduce((sum, i) => sum + i.price * i.quantity, 0),
       vendorId: () => get().items[0]?.vendorId ?? null,
       vendorName: () => get().items[0]?.vendorName ?? null,
+
+      hydrate: async () => {
+        if (!isAuthed()) return;
+        if (get().hydrating) return;
+        set({ hydrating: true });
+        try {
+          const cart = await cartApi.get();
+          set({ ...applyServerCart(cart), hydrating: false });
+        } catch {
+          set({ hydrating: false });
+        }
+      },
+
+      mergeAndHydrate: async () => {
+        if (!isAuthed()) return;
+        const local = get().items;
+        try {
+          if (local.length > 0) {
+            const payload = local.map((i) => ({
+              productId: i.productId,
+              quantity: i.quantity,
+              variationComboId: i.variationComboId,
+            }));
+            const cart = await cartApi.merge(payload);
+            set(applyServerCart(cart));
+          } else {
+            await get().hydrate();
+          }
+        } catch {
+          await get().hydrate();
+        }
+      },
     }),
-    { name: 'cart' },
+    {
+      name: 'cart',
+      // Don't persist server IDs or hydrating flag — they are session state.
+      partialize: (s) => ({ items: s.items }) as any,
+    },
   ),
 );
 

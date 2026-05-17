@@ -1,12 +1,16 @@
 'use client';
 import Link from 'next/link';
 import { DashboardShell, Icons, type NavItem } from '@/components/dashboard/DashboardShell';
+import { ProfileMenu } from '@/components/dashboard/ProfileMenu';
 import { usePermissions, type Permission } from '@/lib/permissions';
 
 const NAV: Array<NavItem & { perm?: Permission | Permission[] }> = [
   { label: 'Overview', href: '/admin', icon: Icons.Chart, match: (p) => p === '/admin' },
   { label: 'Vendor approvals', href: '/admin/vendors', icon: Icons.Users, match: (p) => p.startsWith('/admin/vendors'), perm: 'VENDOR_VIEW' },
-  { label: 'Categories', href: '/admin/categories', icon: Icons.Layers, match: (p) => p.startsWith('/admin/categories'), perm: 'CATEGORY_MANAGE' },
+  { label: 'KYC review',       href: '/admin/kyc',     icon: Icons.Users, match: (p) => p.startsWith('/admin/kyc'),     perm: 'VENDOR_APPROVE' },
+  { label: 'Categories', href: '/admin/categories', icon: Icons.Layers, match: (p) => p === '/admin/categories' || (p.startsWith('/admin/categories/') && !p.startsWith('/admin/categories/proposed')), perm: 'CATEGORY_MANAGE' },
+  { label: 'Category proposals', href: '/admin/categories/proposed', icon: Icons.Layers, match: (p) => p.startsWith('/admin/categories/proposed'), perm: 'CATEGORY_MANAGE' },
+  { label: 'Collections', href: '/admin/collections', icon: Icons.Layers, match: (p) => p.startsWith('/admin/collections'), perm: 'CATEGORY_MANAGE' },
   { label: 'Payouts', href: '/admin/payouts', icon: Icons.Wallet, match: (p) => p.startsWith('/admin/payouts'), perm: 'PAYOUT_VIEW' },
   { label: 'Payment methods', href: '/admin/payments', icon: Icons.Wallet, match: (p) => p.startsWith('/admin/payments'), perm: 'PAYMENT_METHOD_VIEW' },
   { label: 'Settings', href: '/admin/settings', icon: Icons.Settings, match: (p) => p.startsWith('/admin/settings'), perm: 'SETTINGS_MANAGE' },
@@ -36,7 +40,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           <button className="h-9 w-9 rounded-md hover:bg-canvas flex items-center justify-center text-ink-700" aria-label="Notifications">
             {Icons.Bell}
           </button>
-          <div className="h-8 w-8 rounded-full bg-ink-900 text-white text-xs font-bold flex items-center justify-center">A</div>
+          <ProfileMenu variant="admin" />
         </div>
       }
     >

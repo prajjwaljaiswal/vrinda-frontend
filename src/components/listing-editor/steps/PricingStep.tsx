@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { api } from '@/lib/api';
 import { StepHeader, StepProps, Field, ComingSoonBadge } from '../StepShell';
+import { MakingChargeType, SHOWS_WEIGHT, SHOWS_MAKING_CHARGE } from '../types';
 
 interface ReturnPolicy {
   id: string; name: string; accepted: boolean; days: number; buyerPaysReturn: boolean; notes: string | null;
@@ -35,6 +36,10 @@ export function PricingStep({ draft, setDraft }: StepProps) {
   const selectedPolicy = policies.find((p) => p.id === draft.returnPolicyId);
 
   const selectedMethod = methods.find((m) => m.id === draft.shippingMethodId);
+
+  const jt = draft.jewelleryType;
+  const showWeight = jt ? SHOWS_WEIGHT[jt as Exclude<typeof jt, ''>] : false;
+  const showMakingCharge = jt ? SHOWS_MAKING_CHARGE[jt as Exclude<typeof jt, ''>] : false;
 
   return (
     <>
@@ -92,6 +97,81 @@ export function PricingStep({ draft, setDraft }: StepProps) {
               </Field>
             </div>
           )}
+        </section>
+
+        {(showWeight || showMakingCharge) && (
+          <section className="border-t border-line pt-6">
+            <p className="text-sm font-semibold text-ink-900">Weight & making charges</p>
+            <p className="text-xs text-ink-500 mt-0.5 mb-4">Shown on the product page and used by buyers to compare value.</p>
+
+            {showWeight && (
+              <div className="grid sm:grid-cols-2 gap-4">
+                <Field label="Gross weight (g)" hint="Total weight including stones">
+                  <input className="input-field" type="number" min="0" step="0.001"
+                    value={draft.grossWeightGrams}
+                    onChange={(e) => setDraft({ grossWeightGrams: e.target.value })} />
+                </Field>
+                <Field label="Net weight (g)" hint="Metal-only weight">
+                  <input className="input-field" type="number" min="0" step="0.001"
+                    value={draft.netWeightGrams}
+                    onChange={(e) => setDraft({ netWeightGrams: e.target.value })} />
+                </Field>
+              </div>
+            )}
+
+            {showMakingCharge && (
+              <div className="grid sm:grid-cols-3 gap-4 mt-3">
+                <Field label="Making charge type">
+                  <select className="input-field" value={draft.makingChargeType}
+                    onChange={(e) => setDraft({ makingChargeType: e.target.value as MakingChargeType })}>
+                    <option value="">— Select —</option>
+                    <option value="PER_GRAM">Per gram</option>
+                    <option value="FLAT">Flat</option>
+                    <option value="PERCENT">Percent of gold value</option>
+                  </select>
+                </Field>
+                <Field label="Making charge value">
+                  <input className="input-field" type="number" min="0" step="0.01"
+                    value={draft.makingChargeValue}
+                    onChange={(e) => setDraft({ makingChargeValue: e.target.value })} />
+                </Field>
+                <Field label="Wastage %" hint="Typically 0–15% for traditional pieces">
+                  <input className="input-field" type="number" min="0" max="100" step="0.01"
+                    value={draft.wastagePercent}
+                    onChange={(e) => setDraft({ wastagePercent: e.target.value })} />
+                </Field>
+              </div>
+            )}
+
+          </section>
+        )}
+
+        <section className="border-t border-line pt-6">
+          <details className="rounded-md border border-line p-3">
+            <summary className="text-sm font-semibold text-ink-900 cursor-pointer">Dimensions & processing time</summary>
+            <div className="grid sm:grid-cols-3 gap-3 mt-3">
+              <Field label="Length (mm)">
+                <input className="input-field" type="number" min="0" value={draft.lengthMm}
+                  onChange={(e) => setDraft({ lengthMm: e.target.value })} />
+              </Field>
+              <Field label="Width (mm)">
+                <input className="input-field" type="number" min="0" value={draft.widthMm}
+                  onChange={(e) => setDraft({ widthMm: e.target.value })} />
+              </Field>
+              <Field label="Height (mm)">
+                <input className="input-field" type="number" min="0" value={draft.heightMm}
+                  onChange={(e) => setDraft({ heightMm: e.target.value })} />
+              </Field>
+              <Field label="Processing — min (days)">
+                <input className="input-field" type="number" min="0" value={draft.processingMin}
+                  onChange={(e) => setDraft({ processingMin: e.target.value })} />
+              </Field>
+              <Field label="Processing — max (days)">
+                <input className="input-field" type="number" min="0" value={draft.processingMax}
+                  onChange={(e) => setDraft({ processingMax: e.target.value })} />
+              </Field>
+            </div>
+          </details>
         </section>
 
         <section className="border-t border-line pt-6">

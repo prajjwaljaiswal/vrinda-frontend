@@ -42,6 +42,7 @@ export interface VendorTheme {
 
 export interface VendorBrand {
   id: string;
+  slug?: string | null;
   shopName: string;
   shopLogoUrl: string | null;
   bannerUrls: string[];
@@ -55,6 +56,7 @@ interface VendorContextValue {
   vendor: VendorBrand;
   theme: string;          // legacy primary color shortcut
   themeConfig: VendorTheme;
+  storeKey: string;       // slug ?? id — used to build canonical SEO URLs
 }
 
 export function defaultTheme(primary = '#F1641E'): VendorTheme {
@@ -103,8 +105,9 @@ const VendorContext = createContext<VendorContextValue | null>(null);
 export function VendorProvider({ vendor, children }: { vendor: VendorBrand; children: React.ReactNode }) {
   const theme = vendor.themeColor ?? '#F1641E';
   const themeConfig = useMemo(() => mergeTheme(theme, vendor.theme), [theme, vendor.theme]);
+  const storeKey = vendor.slug || vendor.id;
   return (
-    <VendorContext.Provider value={{ vendor, theme, themeConfig }}>
+    <VendorContext.Provider value={{ vendor, theme, themeConfig, storeKey }}>
       {children}
     </VendorContext.Provider>
   );

@@ -1,8 +1,8 @@
 'use client';
 import { useRef } from 'react';
-import { StepHeader, StepProps, ComingSoonBadge } from '../StepShell';
+import { StepHeader, StepProps, Field } from '../StepShell';
 
-const MAX_PHOTOS = 6;
+const MAX_PHOTOS = 8;
 
 export function MediaStep({ draft, setDraft }: StepProps) {
   const inputRef = useRef<HTMLInputElement>(null);
@@ -127,15 +127,23 @@ export function MediaStep({ draft, setDraft }: StepProps) {
         )}
         <input ref={inputRef} type="file" accept="image/*" multiple className="hidden" onChange={(e) => addFiles(e.target.files)} />
 
-        <div className="rounded-md border border-line bg-canvas/40 p-4 flex items-center justify-between">
-          <div>
-            <p className="text-sm font-semibold text-ink-900">Add a hero video <ComingSoonBadge /></p>
-            <p className="text-xs text-ink-500 mt-0.5">Up to 1 video, max 100 MB.</p>
-          </div>
-          <button type="button" disabled className="text-sm px-3.5 h-9 rounded-pill border border-line text-ink-400 cursor-not-allowed">
-            Upload
-          </button>
-        </div>
+        {totalCount > 0 && (
+          <Field label="Image alt text" hint="Short description of each image — helps SEO and accessibility. One line per image, in display order.">
+            <textarea className="input-field min-h-[100px] resize-y font-mono text-xs"
+              placeholder={"Front view of pendant in yellow gold\nClose-up of bezel setting\n…"}
+              value={Array.from({ length: totalCount }, (_, i) => draft.imageAlts[i] ?? '').join('\n')}
+              onChange={(e) => {
+                const lines = e.target.value.split('\n').slice(0, totalCount).map((s) => s.slice(0, 160));
+                setDraft({ imageAlts: lines });
+              }} />
+          </Field>
+        )}
+
+        <Field label="Hero video URL" hint="Optional — paste a YouTube, Vimeo, or direct MP4 link">
+          <input className="input-field" type="url" placeholder="https://youtu.be/…"
+            value={draft.videoUrl} maxLength={500}
+            onChange={(e) => setDraft({ videoUrl: e.target.value })} />
+        </Field>
       </div>
     </>
   );

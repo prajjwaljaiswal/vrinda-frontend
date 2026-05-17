@@ -1,6 +1,6 @@
 'use client';
 import Link from 'next/link';
-import { useState } from 'react';
+import { WishlistButton } from '@/components/WishlistButton';
 
 export interface ProductCardData {
   id: string;
@@ -21,7 +21,6 @@ function formatINR(v: string | number) {
 }
 
 export function ProductCard({ product }: { product: ProductCardData }) {
-  const [fav, setFav] = useState(false);
   const rating = product.rating ?? 0;
   const reviews = product.reviewCount ?? 0;
   const hasMrp = product.mrp && Number(product.mrp) > Number(product.price);
@@ -60,17 +59,7 @@ export function ProductCard({ product }: { product: ProductCardData }) {
           </span>
         )}
 
-        <button
-          type="button"
-          aria-label="Save to favorites"
-          onClick={(e) => {
-            e.preventDefault();
-            setFav((f) => !f);
-          }}
-          className="absolute top-2 right-2 h-9 w-9 rounded-full bg-white/95 shadow-card flex items-center justify-center hover:scale-105 transition"
-        >
-          <HeartIcon filled={fav} />
-        </button>
+        <WishlistButton productId={product.id} className="absolute top-2 right-2" />
       </div>
 
       <div className="pt-3 px-1 pb-3">
@@ -118,10 +107,3 @@ export function Stars({ value, size = 14 }: { value: number; size?: number }) {
   );
 }
 
-function HeartIcon({ filled }: { filled: boolean }) {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill={filled ? '#F1641E' : 'none'} stroke={filled ? '#F1641E' : '#222'} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
-    </svg>
-  );
-}

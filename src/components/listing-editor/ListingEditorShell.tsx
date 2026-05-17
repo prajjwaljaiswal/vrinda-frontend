@@ -37,11 +37,46 @@ export function ListingEditorShell({ productId }: ListingEditorShellProps = {}) 
           setDraftState({
             ...EMPTY_DRAFT,
             existingImages: p.images ?? [],
+            imageAlts: p.imageAlts ?? [],
+            videoUrl: p.videoUrl ?? '',
+            jewelleryType: p.jewelleryType ?? '',
             categoryId: p.category?.id ?? '',
             title: p.name ?? '',
             description: p.description ?? '',
+            brand: p.brand ?? '',
+            highlights: p.highlights ?? [],
+            seoTitle: p.seoTitle ?? '',
+            seoDescription: p.seoDescription ?? '',
+            warranty: p.warranty ?? '',
+            existingCertificateUrl: p.certificateImageUrl ?? '',
             metalType: p.metalType ?? 'gold',
+            materials: p.materials ?? [],
             attrValues: Object.fromEntries((p.attributeValues ?? []).map((av: any) => [av.attribute.id, av.value])),
+            purity: p.purity ?? '',
+            gender: p.gender ?? '',
+            baseMetal: p.baseMetal ?? '',
+            plating: p.plating ?? '',
+            hallmarked: p.hallmarked ?? false,
+            certifiedBy: p.certifiedBy ?? '',
+            certificateNumber: p.certificateNumber ?? '',
+            hsnCode: p.hsnCode ?? '',
+            gstRatePercent: p.gstRatePercent != null ? String(p.gstRatePercent) : '',
+            countryOfOrigin: p.countryOfOrigin ?? 'IN',
+            careInstructions: p.careInstructions ?? '',
+            antiTarnish: p.antiTarnish ?? false,
+            nickelFree: p.nickelFree ?? false,
+            hypoallergenic: p.hypoallergenic ?? false,
+            leadFree: p.leadFree ?? false,
+            grossWeightGrams: p.grossWeightGrams != null ? String(p.grossWeightGrams) : '',
+            netWeightGrams:   p.netWeightGrams != null   ? String(p.netWeightGrams)   : '',
+            makingChargeType: p.makingChargeType ?? '',
+            makingChargeValue: p.makingChargeValue != null ? String(p.makingChargeValue) : '',
+            wastagePercent: p.wastagePercent != null ? String(p.wastagePercent) : '',
+            lengthMm: p.lengthMm != null ? String(p.lengthMm) : '',
+            widthMm:  p.widthMm  != null ? String(p.widthMm)  : '',
+            heightMm: p.heightMm != null ? String(p.heightMm) : '',
+            processingMin: p.processingMin != null ? String(p.processingMin) : '',
+            processingMax: p.processingMax != null ? String(p.processingMax) : '',
             tags: p.tags ?? [],
             personalization: p.personalization ?? EMPTY_DRAFT.personalization,
             variations: (p.variations ?? []).map((v: any) => ({
@@ -150,14 +185,63 @@ export function ListingEditorShell({ productId }: ListingEditorShellProps = {}) 
       fd.append('featured',      String(draft.featured));
       if (draft.sku.trim())          fd.append('sku',       draft.sku.trim());
       if (draft.tags.length > 0)     fd.append('tags',      JSON.stringify(draft.tags));
-      const materials = draft.metalType ? [draft.metalType] : [];
+      // Materials: real multi-chip list, falling back to legacy metalType for back-compat.
+      const materials = draft.materials.length > 0
+        ? draft.materials
+        : (draft.metalType ? [draft.metalType] : []);
       if (materials.length > 0)      fd.append('materials', JSON.stringify(materials));
+
+      // Jewellery identity & compliance
+      if (draft.jewelleryType) fd.append('jewelleryType', draft.jewelleryType);
+      if (draft.purity)        fd.append('purity',        draft.purity);
+      if (draft.gender)        fd.append('gender',        draft.gender);
+      if (draft.baseMetal.trim())       fd.append('baseMetal', draft.baseMetal.trim());
+      if (draft.plating)                fd.append('plating',   draft.plating);
+      fd.append('hallmarked', String(draft.hallmarked));
+      if (draft.certifiedBy)            fd.append('certifiedBy',       draft.certifiedBy);
+      if (draft.certificateNumber.trim()) fd.append('certificateNumber', draft.certificateNumber.trim());
+      if (draft.hsnCode.trim())         fd.append('hsnCode',         draft.hsnCode.trim());
+      if (draft.gstRatePercent)         fd.append('gstRatePercent',  draft.gstRatePercent);
+      if (draft.countryOfOrigin.trim()) fd.append('countryOfOrigin', draft.countryOfOrigin.trim());
+      if (draft.careInstructions.trim()) fd.append('careInstructions', draft.careInstructions.trim());
+      fd.append('antiTarnish',    String(draft.antiTarnish));
+      fd.append('nickelFree',     String(draft.nickelFree));
+      fd.append('hypoallergenic', String(draft.hypoallergenic));
+      fd.append('leadFree',       String(draft.leadFree));
+
+      // Weight & making charges
+      if (draft.grossWeightGrams) fd.append('grossWeightGrams', draft.grossWeightGrams);
+      if (draft.netWeightGrams)   fd.append('netWeightGrams',   draft.netWeightGrams);
+      if (draft.makingChargeType) fd.append('makingChargeType', draft.makingChargeType);
+      if (draft.makingChargeValue) fd.append('makingChargeValue', draft.makingChargeValue);
+      if (draft.wastagePercent)   fd.append('wastagePercent',   draft.wastagePercent);
+      if (draft.lengthMm)         fd.append('lengthMm',         draft.lengthMm);
+      if (draft.widthMm)          fd.append('widthMm',          draft.widthMm);
+      if (draft.heightMm)         fd.append('heightMm',         draft.heightMm);
+      if (draft.processingMin)    fd.append('processingMin',    draft.processingMin);
+      if (draft.processingMax)    fd.append('processingMax',    draft.processingMax);
+
+      if (draft.videoUrl.trim()) fd.append('videoUrl', draft.videoUrl.trim());
       if (draft.personalization.enabled || draft.personalization.instructions) {
         fd.append('personalization', JSON.stringify(draft.personalization));
       }
       if (draft.shippingMethodId)    fd.append('shippingMethodDefaultId', draft.shippingMethodId);
       if (draft.shopSection)         fd.append('shopSectionId',  draft.shopSection);
       if (draft.returnPolicyId)      fd.append('returnPolicyId', draft.returnPolicyId);
+
+      // Polish fields — brand, SEO, highlights, warranty, image alts, certificate.
+      if (draft.brand.trim())          fd.append('brand', draft.brand.trim());
+      if (draft.seoTitle.trim())       fd.append('seoTitle', draft.seoTitle.trim());
+      if (draft.seoDescription.trim()) fd.append('seoDescription', draft.seoDescription.trim());
+      if (draft.warranty.trim())       fd.append('warranty', draft.warranty.trim());
+      const cleanHighlights = draft.highlights.map((h) => h.trim()).filter(Boolean);
+      if (cleanHighlights.length > 0)  fd.append('highlights', JSON.stringify(cleanHighlights));
+      // Alt text: keep parallel to (kept existing) + (newly uploaded) order — for edit mode keepImages defines that order.
+      const altImageCount = isEdit ? draft.existingImages.length + draft.files.length : draft.files.length;
+      if (altImageCount > 0 && draft.imageAlts.length > 0) {
+        fd.append('imageAlts', JSON.stringify(draft.imageAlts.slice(0, altImageCount)));
+      }
+      if (draft.certificateFile)       fd.append('certificate', draft.certificateFile);
 
       // Variations
       const incomplete = draft.variations.find(

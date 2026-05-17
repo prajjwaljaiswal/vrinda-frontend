@@ -8,6 +8,10 @@ import {
   VendorProvider, VendorBrand, VendorTheme, FONT_STACKS, useVendor, SocialPlatform,
 } from '@/lib/vendor-context';
 import { AccountMenu } from '@/components/storefront/AccountMenu';
+import { SearchAutosuggest } from '@/components/search/SearchAutosuggest';
+
+const ALGOLIA_READY =
+  !!process.env.NEXT_PUBLIC_ALGOLIA_APP_ID && !!process.env.NEXT_PUBLIC_ALGOLIA_SEARCH_KEY;
 
 export default function VendorStoreLayout({ children }: { children: React.ReactNode }) {
   const { vendorId } = useParams<{ vendorId: string }>();
@@ -70,6 +74,7 @@ function ThemedShell({ children }: { children: React.ReactNode }) {
     <div className="vendor-themed min-h-screen flex flex-col" style={cssVars}>
       <ThemedTokensCss />
       <Header />
+      <CategoryNav />
       <div className="flex-1">{children}</div>
       <Footer />
     </div>
@@ -121,15 +126,15 @@ function ThemedTokensCss() {
 
 function Header() {
   const pathname = usePathname();
-  const { vendor, themeConfig: t, theme } = useVendor();
+  const { vendor, themeConfig: t, theme, storeKey } = useVendor();
   const items = useCart((s) => s.items);
   const cartCount = items
     .filter((i) => !i.vendorId || i.vendorId === vendor.id)
     .reduce((s, i) => s + i.quantity, 0);
-  const isStorefront = pathname === `/store/${vendor.id}`;
+  const isStorefront = pathname === `/store/${storeKey}`;
   const navLinks = t.header.navLinks.length > 0
     ? t.header.navLinks
-    : [{ label: 'Shop', href: `/store/${vendor.id}` }];
+    : [{ label: 'Shop', href: `/store/${storeKey}` }];
 
   return (
     <header
@@ -145,7 +150,7 @@ function Header() {
         </div>
       )}
       <div className="max-w-6xl mx-auto px-5 h-16 flex items-center gap-4">
-        <Link href={`/store/${vendor.id}`} className="flex items-center gap-3 mr-auto min-w-0">
+        <Link href={`/store/${storeKey}`} className="flex items-center gap-3 min-w-0">
           {vendor.shopLogoUrl
             ? <img src={vendor.shopLogoUrl} alt={vendor.shopName} className="h-10 w-10 rounded-full object-cover border border-line shrink-0" />
             : <div className="h-10 w-10 rounded-full flex items-center justify-center text-white font-bold text-lg shrink-0" style={{ background: theme }}>
@@ -162,8 +167,18 @@ function Header() {
           </div>
         </Link>
 
+        {ALGOLIA_READY ? (
+          <SearchAutosuggest
+            vendorId={storeKey}
+            placeholder={`Search ${vendor.shopName}…`}
+            className="hidden md:block flex-1 max-w-xl mx-2"
+          />
+        ) : (
+          <div className="flex-1" />
+        )}
+
         {isStorefront && (
-          <nav className="hidden md:flex items-center gap-6 text-sm font-medium">
+          <nav className="hidden lg:flex items-center gap-6 text-sm font-medium">
             {navLinks.map((l, i) => (
               <Link key={i} href={l.href} className="hover:opacity-70 transition-opacity">{l.label}</Link>
             ))}
@@ -175,7 +190,7 @@ function Header() {
         </div>
 
         <Link
-          href={`/store/${vendor.id}/checkout`}
+          href={`/store/${storeKey}/cart`}
           className="relative h-10 w-10 rounded-full flex items-center justify-center border hover:opacity-80 transition-colors shrink-0"
           style={{ borderColor: 'rgba(0,0,0,0.15)' }}
         >
@@ -191,6 +206,105 @@ function Header() {
         </Link>
       </div>
     </header>
+  );
+}
+
+interface VendorCategory {
+  id: string;
+  name: string;
+  slug: string;
+  children: { id: string; name: string; slug: string }[];
+}
+
+function CategoryNav() {
+  const { vendor, storeKey, themeConfig: t, theme } = useVendor();
+  const [cats, setCats] = useState<VendorCategory[] | null>(null);
+  const [openId, setOpenId] = useState<string | null>(null);
+
+  useEffect(() => {
+    api<VendorCategory[]>(`/api/vendors/${vendor.id}/categories`, { auth: false, silent: true })
+      .then(setCats)
+      .catch(() => setCats([]));
+  }, [vendor.id]);
+
+  if (!cats || cats.length === 0) return null;
+
+  const productsBase = `/store/${storeKey}/products`;
+
+  return (
+    <nav
+      className="border-b"
+      style={{
+        background: t.colors.headerBg,
+        color: t.colors.headerText,
+        borderColor: 'rgba(0,0,0,0.08)',
+      }}
+      onMouseLeave={() => setOpenId(null)}
+    >
+      <div className="max-w-6xl mx-auto px-5">
+        <ul className="flex items-stretch gap-1 overflow-x-auto no-scrollbar text-sm font-medium">
+          <li>
+            <Link
+              href={productsBase}
+              className="flex items-center h-11 px-3 whitespace-nowrap hover:opacity-70 transition-opacity"
+              style={{ color: theme }}
+            >
+              Shop all
+            </Link>
+          </li>
+          {cats.map((c) => {
+            const hasChildren = c.children.length > 0;
+            const open = openId === c.id;
+            return (
+              <li
+                key={c.id}
+                className="relative"
+                onMouseEnter={() => setOpenId(c.id)}
+              >
+                <Link
+                  href={`${productsBase}?category=${c.slug}`}
+                  className="flex items-center gap-1 h-11 px-3 whitespace-nowrap hover:opacity-70 transition-opacity"
+                >
+                  {c.name}
+                  {hasChildren && (
+                    <svg
+                      width="10"
+                      height="10"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      className="opacity-60"
+                    >
+                      <path d="m6 9 6 6 6-6" />
+                    </svg>
+                  )}
+                </Link>
+                {hasChildren && open && (
+                  <div
+                    className="absolute left-0 top-full min-w-[200px] shadow-lg border rounded-md py-1 z-50"
+                    style={{ background: t.colors.headerBg, borderColor: 'rgba(0,0,0,0.10)' }}
+                  >
+                    {c.children.map((s) => (
+                      <Link
+                        key={s.id}
+                        href={`${productsBase}?category=${s.slug}`}
+                        className="block px-4 py-2 text-sm whitespace-nowrap hover:bg-canvas"
+                        onClick={() => setOpenId(null)}
+                      >
+                        {s.name}
+                      </Link>
+                    ))}
+                  </div>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      </div>
+    </nav>
   );
 }
 

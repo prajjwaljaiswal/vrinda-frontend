@@ -6,6 +6,7 @@ import Link from 'next/link';
 import toast from 'react-hot-toast';
 import { api, setToken } from '@/lib/api';
 import { GoogleButton } from '@/components/auth/GoogleButton';
+import { useCart } from '@/lib/cart';
 
 export default function RegisterPage() {
   return (
@@ -32,7 +33,7 @@ function RegisterInner() {
   const [loading, setLoading] = useState(false);
 
   function routeByRole(role: string) {
-    if (role === 'VENDOR') router.push('/vendor/onboard');
+    if (role === 'VENDOR') router.push('/sell/onboard');
     else router.push('/products');
   }
 
@@ -47,6 +48,7 @@ function RegisterInner() {
         auth: false,
       });
       setToken(data.token);
+      await useCart.getState().mergeAndHydrate();
       toast.success('Account created — welcome!');
       routeByRole(data.user.role);
     } catch (e: any) {
@@ -66,6 +68,7 @@ function RegisterInner() {
         auth: false,
       });
       setToken(data.token);
+      await useCart.getState().mergeAndHydrate();
       toast.success('Account created — welcome!');
       routeByRole(data.user.role);
     } catch (e: any) {

@@ -25,7 +25,7 @@ export async function middleware(req: NextRequest) {
       const vendor = await res.json();
       // Rewrite to the vendor store page while keeping the custom domain in the browser URL
       const url = req.nextUrl.clone();
-      url.pathname = `/store/${vendor.id}${req.nextUrl.pathname === '/' ? '' : req.nextUrl.pathname}`;
+      url.pathname = `/store/${vendor.slug || vendor.id}${req.nextUrl.pathname === '/' ? '' : req.nextUrl.pathname}`;
       return NextResponse.rewrite(url);
     }
   } catch {

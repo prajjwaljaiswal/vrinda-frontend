@@ -4,7 +4,11 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
 import { useCart } from '@/lib/cart';
+import { useWishlist } from '@/lib/wishlist';
 import { api } from '@/lib/api';
+import { addressApi, type Address } from '@/lib/addresses';
+import { GuestCheckoutPanel } from '@/components/GuestCheckoutPanel';
+import { CheckoutStep } from '@/components/checkout/CheckoutStep';
 
 declare global {
   interface Window { Razorpay: any; }
@@ -31,7 +35,48 @@ interface QuoteGroup {
 export default function CheckoutPage() {
   const router = useRouter();
   const { items, setQty, remove, total, clear } = useCart();
+  const addToWishlist = useWishlist((s) => s.add);
+
+  async function saveForLater(productId: string, variationComboId?: string) {
+    const t = typeof window !== 'undefined' ? window.localStorage.getItem('token') : null;
+    if (!t) { toast.error('Sign in to save items for later'); return; }
+    await addToWishlist(productId);
+    remove(productId, variationComboId);
+    toast.success('Moved to wishlist');
+  }
   const [addr, setAddr] = useState({ name: '', line1: '', line2: '', city: '', state: '', pincode: '', phone: '' });
+  const [savedAddresses, setSavedAddresses] = useState<Address[]>([]);
+  const [selectedAddressId, setSelectedAddressId] = useState<string | 'new'>('new');
+  const [authed, setAuthed] = useState(false);
+  const [saveNewAddress, setSaveNewAddress] = useState(true);
+  const [newAddressLabel, setNewAddressLabel] = useState('');
+  const [makeNewDefault, setMakeNewDefault] = useState(false);
+  const [currentStep, setCurrentStep] = useState<0 | 1 | 2>(0);
+
+  useEffect(() => {
+    setAuthed(typeof window !== 'undefined' && !!window.localStorage.getItem('token'));
+  }, []);
+
+  async function refreshAfterAuth() {
+    setAuthed(true);
+    try {
+      const { items } = await addressApi.list();
+      setSavedAddresses(items);
+      const def = items.find((a) => a.isDefault) ?? items[0];
+      if (def) {
+        setSelectedAddressId(def.id);
+        setAddr({
+          name: def.name,
+          line1: def.line1,
+          line2: def.line2 ?? '',
+          city: def.city,
+          state: def.state,
+          pincode: def.pincode,
+          phone: def.phone,
+        });
+      }
+    } catch {}
+  }
   const [payMethod, setPayMethod] = useState<'RAZORPAY' | 'COD'>('RAZORPAY');
   const [codEnabled, setCodEnabled] = useState(false);
   const [err, setErr] = useState('');
@@ -42,11 +87,57 @@ export default function CheckoutPage() {
   const [shipError, setShipError] = useState('');
   const [shipSel, setShipSel] = useState<Record<string, { methodId: string; serviceCode: string | null }>>({});
 
+  // Coupon state
+  const [couponInput, setCouponInput] = useState('');
+  const [coupon, setCoupon] = useState<{ code: string; discount: number } | null>(null);
+  const [couponBusy, setCouponBusy] = useState(false);
+  const [couponErr, setCouponErr] = useState('');
+
   useEffect(() => {
     api<{ enabled: boolean }>('/api/settings/cod', { auth: false })
       .then((r) => setCodEnabled(r.enabled))
       .catch(() => {});
+
+    const t = typeof window !== 'undefined' ? window.localStorage.getItem('token') : null;
+    if (!t) return;
+    addressApi.list()
+      .then(({ items }) => {
+        setSavedAddresses(items);
+        const def = items.find((a) => a.isDefault) ?? items[0];
+        if (def) {
+          setSelectedAddressId(def.id);
+          setAddr({
+            name: def.name,
+            line1: def.line1,
+            line2: def.line2 ?? '',
+            city: def.city,
+            state: def.state,
+            pincode: def.pincode,
+            phone: def.phone,
+          });
+        }
+      })
+      .catch(() => {});
   }, []);
+
+  function selectAddress(id: string) {
+    setSelectedAddressId(id);
+    if (id === 'new') {
+      setAddr({ name: '', line1: '', line2: '', city: '', state: '', pincode: '', phone: '' });
+      return;
+    }
+    const a = savedAddresses.find((x) => x.id === id);
+    if (!a) return;
+    setAddr({
+      name: a.name,
+      line1: a.line1,
+      line2: a.line2 ?? '',
+      city: a.city,
+      state: a.state,
+      pincode: a.pincode,
+      phone: a.phone,
+    });
+  }
 
   // Refetch quote whenever cart contents OR a usable destination changes.
   useEffect(() => {
@@ -93,6 +184,58 @@ export default function CheckoutPage() {
     return () => ctrl.abort();
   }, [items, addr.pincode, addr.state, payMethod]);
 
+  // Re-validate any applied coupon whenever cart changes
+  useEffect(() => {
+    if (!coupon) return;
+    if (items.length === 0) { setCoupon(null); return; }
+    const vendorId = items[0].vendorId;
+    api<{ discount: number; code: string }>('/api/coupons/preview', {
+      method: 'POST',
+      silent: true,
+      body: JSON.stringify({
+        code: coupon.code,
+        vendorId,
+        items: items.map((i) => ({ productId: i.productId, quantity: i.quantity, variationComboId: i.variationComboId })),
+      }),
+    })
+      .then((r) => setCoupon({ code: r.code, discount: r.discount }))
+      .catch((e: any) => {
+        setCoupon(null);
+        setCouponErr(e?.message || 'Coupon no longer applies');
+      });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [items]);
+
+  async function applyCoupon() {
+    setCouponErr('');
+    const code = couponInput.trim().toUpperCase();
+    if (!code) return;
+    if (items.length === 0) return;
+    setCouponBusy(true);
+    try {
+      const r = await api<{ discount: number; code: string }>('/api/coupons/preview', {
+        method: 'POST',
+        silent: true,
+        body: JSON.stringify({
+          code,
+          vendorId: items[0].vendorId,
+          items: items.map((i) => ({ productId: i.productId, quantity: i.quantity, variationComboId: i.variationComboId })),
+        }),
+      });
+      setCoupon({ code: r.code, discount: r.discount });
+      setCouponInput('');
+    } catch (e: any) {
+      setCouponErr(e?.message || 'Coupon could not be applied');
+    } finally {
+      setCouponBusy(false);
+    }
+  }
+
+  function removeCoupon() {
+    setCoupon(null);
+    setCouponErr('');
+  }
+
   const shippingTotal = shipQuote
     ? shipQuote.reduce((sum, g) => {
         const sel = shipSel[g.vendorId];
@@ -122,6 +265,39 @@ export default function CheckoutPage() {
     });
   }
 
+  /**
+   * If the user is using a new address (not an existing saved one) and asked to
+   * save it, persist via /api/addresses and reflect the new entry in local state.
+   * Best-effort: failure here doesn't block checkout.
+   */
+  async function persistNewAddressIfRequested(): Promise<void> {
+    if (selectedAddressId !== 'new') return;
+    if (!saveNewAddress) return;
+    if (!authed) return;
+    try {
+      const created = await addressApi.create({
+        label: newAddressLabel.trim() || null,
+        name: addr.name,
+        phone: addr.phone,
+        line1: addr.line1,
+        line2: addr.line2 || null,
+        city: addr.city,
+        state: addr.state,
+        pincode: addr.pincode,
+        country: 'IN',
+        isDefault: makeNewDefault,
+      });
+      setSavedAddresses((cur) => {
+        const cleared = created.isDefault ? cur.map((a) => ({ ...a, isDefault: false })) : cur;
+        return [created, ...cleared];
+      });
+      setSelectedAddressId(created.id);
+      toast.success('Address saved to your address book');
+    } catch {
+      // silently swallow — the order should still proceed
+    }
+  }
+
   function validateAddr(): string[] {
     const missing: string[] = [];
     if (addr.name.trim().length < 2)   missing.push('Full name');
@@ -133,6 +309,21 @@ export default function CheckoutPage() {
     return missing;
   }
 
+  const addressComplete  = validateAddr().length === 0;
+  const shippingComplete = addressComplete && allVendorsCovered;
+
+  function advanceFromAddress() {
+    const missing = validateAddr();
+    if (missing.length > 0) { setErr(`Please fill in: ${missing.join(', ')}`); return; }
+    setErr('');
+    setCurrentStep(1);
+  }
+  function advanceFromShipping() {
+    if (!allVendorsCovered) { setErr('Please pick a shipping option'); return; }
+    setErr('');
+    setCurrentStep(2);
+  }
+
   async function placeCOD() {
     setErr('');
     const missing = validateAddr();
@@ -141,12 +332,14 @@ export default function CheckoutPage() {
 
     setLoading(true);
     try {
+      await persistNewAddressIfRequested();
       await api('/api/orders/cod', {
         method: 'POST',
         body: JSON.stringify({
           items: items.map((i) => ({ productId: i.productId, quantity: i.quantity, variationComboId: i.variationComboId })),
           shippingAddress: addr,
           shippingSelections: selectionsPayload(),
+          couponCode: coupon?.code,
         }),
       });
       toast.success('Order placed! You can pay on delivery.');
@@ -166,6 +359,7 @@ export default function CheckoutPage() {
 
     setLoading(true);
     try {
+      await persistNewAddressIfRequested();
       const ok = await loadRazorpayScript();
       if (!ok) throw new Error('Failed to load payment gateway');
 
@@ -181,6 +375,7 @@ export default function CheckoutPage() {
           items: items.map((i) => ({ productId: i.productId, quantity: i.quantity, variationComboId: i.variationComboId })),
           shippingAddress: addr,
           shippingSelections: selectionsPayload(),
+          couponCode: coupon?.code,
         }),
       });
 
@@ -226,7 +421,8 @@ export default function CheckoutPage() {
 
   const subtotal = total();
   const shipping = shippingTotal;
-  const grand = subtotal + shipping;
+  const discount = coupon?.discount ?? 0;
+  const grand = Math.max(0, subtotal + shipping - discount);
 
   if (items.length === 0) {
     return (
@@ -266,55 +462,53 @@ export default function CheckoutPage() {
       )}
 
       <div className="grid lg:grid-cols-[1fr_400px] gap-8 items-start">
-        {/* LEFT: cart + address + payment method */}
-        <div className="space-y-6">
-          {/* Cart */}
-          <section className="bg-surface border border-line rounded-md shadow-card overflow-hidden">
-            <div className="px-5 py-4 border-b border-line flex items-center justify-between">
-              <h2 className="font-semibold text-ink-900">Your cart <span className="text-ink-500 font-normal">· {items.length} item{items.length === 1 ? '' : 's'}</span></h2>
-              <Link href="/products" className="text-sm text-brand-700 hover:underline">Continue shopping</Link>
-            </div>
-            <ul className="divide-y divide-line">
-              {items.map((i) => (
-                <li key={i.productId} className="p-5 flex gap-4">
-                  <div className="h-20 w-20 rounded-md bg-canvas overflow-hidden shrink-0">
-                    {i.image && <img src={i.image} alt="" className="w-full h-full object-cover" />}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-ink-900 line-clamp-2">{i.name}</p>
-                    {i.variationLabel && <p className="text-xs text-ink-700 mt-0.5">{i.variationLabel}</p>}
-                    <p className="text-xs text-ink-500 mt-0.5">by {i.vendorName}</p>
-                    <div className="mt-3 flex items-center gap-3">
-                      <div className="inline-flex items-center border border-line rounded-pill overflow-hidden">
-                        <button onClick={() => setQty(i.productId, Math.max(1, i.quantity - 1), i.variationComboId)} className="w-8 h-8 hover:bg-canvas text-ink-700">−</button>
-                        <span className="w-8 text-center text-sm font-semibold">{i.quantity}</span>
-                        <button onClick={() => setQty(i.productId, i.quantity + 1, i.variationComboId)} className="w-8 h-8 hover:bg-canvas text-ink-700">+</button>
-                      </div>
-                      <button onClick={() => remove(i.productId, i.variationComboId)} className="text-xs text-ink-500 hover:text-danger underline underline-offset-4">
-                        Remove
-                      </button>
-                    </div>
-                  </div>
-                  <div className="text-right shrink-0">
-                    <p className="font-bold text-ink-900">₹{(i.price * i.quantity).toLocaleString('en-IN')}</p>
-                    {i.quantity > 1 && (
-                      <p className="text-xs text-ink-500 mt-0.5">
-                        ₹{i.price.toLocaleString('en-IN')} × {i.quantity}
-                      </p>
-                    )}
-                  </div>
-                </li>
-              ))}
-            </ul>
-          </section>
+        {/* LEFT: stepped checkout */}
+        <div className="space-y-4">
+          {!authed && (
+            <GuestCheckoutPanel onContinue={refreshAfterAuth} />
+          )}
 
-          {/* Address */}
-          <section className="bg-surface border border-line rounded-md shadow-card">
-            <div className="px-5 py-4 border-b border-line">
-              <h2 className="font-semibold text-ink-900">Shipping address</h2>
-              <p className="text-xs text-ink-500 mt-0.5">We'll use this to deliver your order and send tracking updates.</p>
+          <CheckoutStep
+            index={1}
+            title="Shipping address"
+            isActive={currentStep === 0}
+            isComplete={addressComplete}
+            isLocked={false}
+            onEdit={() => setCurrentStep(0)}
+            summary={addressComplete ? `${addr.name} · ${addr.line1}, ${addr.city} ${addr.pincode}` : 'Add a delivery address'}
+          >
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-xs text-ink-500">We'll use this to deliver your order and send tracking updates.</p>
+              {savedAddresses.length > 0 && (
+                <Link href="/account/addresses" className="text-xs text-brand-700 hover:underline">Manage</Link>
+              )}
             </div>
-            <div className="p-5 space-y-4">
+            {savedAddresses.length > 0 && (
+              <div className="space-y-2 mb-4">
+                {savedAddresses.map((a) => {
+                  const sel = selectedAddressId === a.id;
+                  return (
+                    <label key={a.id} className={`flex gap-3 p-3 rounded-md border cursor-pointer ${sel ? 'border-brand-500 bg-brand-50/40' : 'border-line hover:border-ink-700'}`}>
+                      <input type="radio" name="saved-address" checked={sel} onChange={() => selectAddress(a.id)} className="mt-1" />
+                      <div className="text-sm">
+                        <div className="flex items-center gap-2">
+                          <span className="font-semibold text-ink-900">{a.name}</span>
+                          {a.label && <span className="text-[11px] uppercase tracking-wide text-ink-500">· {a.label}</span>}
+                          {a.isDefault && <span className="text-[11px] uppercase tracking-wide bg-brand-50 text-brand-700 border border-brand-500/40 rounded-pill px-2 py-0.5">Default</span>}
+                        </div>
+                        <p className="text-ink-700 mt-0.5">{a.line1}{a.line2 ? `, ${a.line2}` : ''}, {a.city}, {a.state} {a.pincode}</p>
+                        <p className="text-ink-500 text-xs mt-0.5">{a.phone}</p>
+                      </div>
+                    </label>
+                  );
+                })}
+                <label className={`flex gap-3 p-3 rounded-md border cursor-pointer ${selectedAddressId === 'new' ? 'border-brand-500 bg-brand-50/40' : 'border-line hover:border-ink-700'}`}>
+                  <input type="radio" name="saved-address" checked={selectedAddressId === 'new'} onChange={() => selectAddress('new')} className="mt-1" />
+                  <span className="text-sm font-semibold text-ink-900">+ Use a new address</span>
+                </label>
+              </div>
+            )}
+            <div className={`space-y-4 ${savedAddresses.length > 0 && selectedAddressId !== 'new' ? 'hidden' : ''}`}>
               <Field label="Full name">
                 <input className="input-field" placeholder="As it appears on your ID"
                   value={addr.name} onChange={(e) => setAddr({ ...addr, name: e.target.value })} />
@@ -347,16 +541,68 @@ export default function CheckoutPage() {
                     value={addr.phone} onChange={(e) => setAddr({ ...addr, phone: e.target.value })} />
                 </Field>
               </div>
-            </div>
-          </section>
 
-          {/* Shipping */}
-          <section className="bg-surface border border-line rounded-md shadow-card">
-            <div className="px-5 py-4 border-b border-line">
-              <h2 className="font-semibold text-ink-900">Shipping</h2>
-              <p className="text-xs text-ink-500 mt-0.5">Pick a delivery option per shop. Live rates load after you fill in pincode and state.</p>
+              {authed && (
+                <div className="pt-2 border-t border-line space-y-3">
+                  <label className="flex items-center gap-2 text-sm text-ink-700 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={saveNewAddress}
+                      onChange={(e) => setSaveNewAddress(e.target.checked)}
+                      className="rounded border-line accent-brand-600"
+                    />
+                    Save this address to my address book
+                  </label>
+                  {saveNewAddress && (
+                    <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-3 items-end pl-6">
+                      <Field label="Label (optional)">
+                        <input
+                          className="input-field"
+                          placeholder="Home, Office, Mom's place…"
+                          value={newAddressLabel}
+                          onChange={(e) => setNewAddressLabel(e.target.value)}
+                        />
+                      </Field>
+                      <label className="flex items-center gap-2 text-sm text-ink-700 cursor-pointer pb-2 sm:pb-3">
+                        <input
+                          type="checkbox"
+                          checked={makeNewDefault}
+                          onChange={(e) => setMakeNewDefault(e.target.checked)}
+                          className="rounded border-line accent-brand-600"
+                        />
+                        Set as default
+                      </label>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
-            <div className="p-5 space-y-4">
+
+            <div className="pt-5 mt-5 border-t border-line flex justify-end">
+              <button onClick={advanceFromAddress} className="btn-primary !px-6">Continue to shipping</button>
+            </div>
+          </CheckoutStep>
+
+          <CheckoutStep
+            index={2}
+            title="Shipping"
+            isActive={currentStep === 1}
+            isComplete={shippingComplete}
+            isLocked={!addressComplete}
+            onEdit={() => setCurrentStep(1)}
+            summary={shippingComplete && shipQuote
+              ? shipQuote.map((g) => {
+                  const o = g.options.find((opt) => {
+                    const s = shipSel[g.vendorId];
+                    return s && opt.methodId === s.methodId && opt.serviceCode === s.serviceCode;
+                  });
+                  return o ? `${o.name} · ${o.etaMinDays}–${o.etaMaxDays} days · ${o.amount === 0 ? 'Free' : `₹${o.amount}`}` : '';
+                }).filter(Boolean).join(' · ')
+              : addressComplete ? 'Pick a delivery option' : 'Complete address first'
+            }
+          >
+            <p className="text-xs text-ink-500 mb-3">Pick a delivery option per shop. Live rates load after you fill in pincode and state.</p>
+            <div className="space-y-4">
               {!/^\d{6}$/.test(addr.pincode) || addr.state.trim().length < 2 ? (
                 <p className="text-sm text-ink-500">Enter your pincode and state above to see shipping options.</p>
               ) : shipLoading ? (
@@ -429,14 +675,24 @@ export default function CheckoutPage() {
                 </div>
               )}
             </div>
-          </section>
 
-          {/* Payment method */}
-          <section className="bg-surface border border-line rounded-md shadow-card">
-            <div className="px-5 py-4 border-b border-line">
-              <h2 className="font-semibold text-ink-900">Payment method</h2>
+            <div className="pt-5 mt-5 border-t border-line flex justify-between gap-3">
+              <button onClick={() => setCurrentStep(0)} className="btn-secondary !px-5">Back</button>
+              <button onClick={advanceFromShipping} disabled={!allVendorsCovered} className="btn-primary !px-6">Continue to payment</button>
             </div>
-            <div className="p-5 space-y-3">
+          </CheckoutStep>
+
+          <CheckoutStep
+            index={3}
+            title="Payment"
+            isActive={currentStep === 2}
+            isComplete={false}
+            isLocked={!shippingComplete}
+            onEdit={() => setCurrentStep(2)}
+            summary={shippingComplete ? `${payMethod === 'COD' ? 'Cash on Delivery' : 'Pay online'}` : 'Complete shipping first'}
+          >
+            <p className="text-xs text-ink-500 mb-3">Choose how you want to pay. The order is placed when you tap the Pay button on the right.</p>
+            <div className="space-y-3">
               <PayOption
                 id="pay-online"
                 selected={payMethod === 'RAZORPAY'}
@@ -466,6 +722,51 @@ export default function CheckoutPage() {
                 />
               )}
             </div>
+
+            <div className="pt-5 mt-5 border-t border-line flex justify-between gap-3">
+              <button onClick={() => setCurrentStep(1)} className="btn-secondary !px-5">Back</button>
+              <button onClick={handlePlace} disabled={loading} className="btn-primary !px-6">
+                {loading ? 'Processing…' : payMethod === 'COD' ? `Place order · ₹${grand.toLocaleString('en-IN')}` : `Pay ₹${grand.toLocaleString('en-IN')}`}
+              </button>
+            </div>
+          </CheckoutStep>
+
+          {/* Promo code */}
+          <section className="bg-surface border border-line rounded-md shadow-card">
+            <div className="px-5 py-4 border-b border-line">
+              <h2 className="font-semibold text-ink-900">Promo code</h2>
+              <p className="text-xs text-ink-500 mt-0.5">Got a coupon? Apply it here.</p>
+            </div>
+            <div className="p-5 space-y-3">
+              {coupon ? (
+                <div className="flex items-center justify-between p-3 rounded-md border border-emerald-200 bg-emerald-50">
+                  <div>
+                    <p className="text-sm font-semibold text-success font-mono">{coupon.code}</p>
+                    <p className="text-xs text-ink-700">Discount applied: ₹{coupon.discount.toLocaleString('en-IN')}</p>
+                  </div>
+                  <button onClick={removeCoupon} className="text-xs text-danger hover:underline">Remove</button>
+                </div>
+              ) : (
+                <div className="flex gap-2">
+                  <input
+                    className="input-field flex-1 font-mono uppercase"
+                    placeholder="ENTER CODE"
+                    value={couponInput}
+                    onChange={(e) => { setCouponInput(e.target.value.toUpperCase()); setCouponErr(''); }}
+                    onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); applyCoupon(); } }}
+                  />
+                  <button
+                    type="button"
+                    onClick={applyCoupon}
+                    disabled={couponBusy || !couponInput.trim()}
+                    className="btn-primary"
+                  >
+                    {couponBusy ? 'Applying…' : 'Apply'}
+                  </button>
+                </div>
+              )}
+              {couponErr && <p className="text-xs text-danger">{couponErr}</p>}
+            </div>
           </section>
         </div>
 
@@ -490,6 +791,18 @@ export default function CheckoutPage() {
                 }
                 valueClass={shipping === 0 && allVendorsCovered ? 'text-success' : ''}
               />
+              {coupon && (
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-ink-700">
+                    Discount
+                    <span className="ml-1.5 inline-flex items-center gap-1 text-xs font-mono bg-emerald-50 text-success border border-emerald-200 rounded-pill px-2 py-0.5">
+                      {coupon.code}
+                      <button onClick={removeCoupon} className="hover:text-danger" aria-label="Remove coupon">×</button>
+                    </span>
+                  </span>
+                  <span className="font-medium text-success">−₹{discount.toLocaleString('en-IN')}</span>
+                </div>
+              )}
               <Row label="Estimated taxes" value="Included" muted />
               <div className="border-t border-line pt-3 flex items-baseline justify-between">
                 <span className="text-sm font-semibold text-ink-900">Total</span>

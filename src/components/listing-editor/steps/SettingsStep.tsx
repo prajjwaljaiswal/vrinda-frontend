@@ -55,6 +55,24 @@ export function SettingsStep({ draft, setDraft }: StepProps) {
           </span>
         </button>
 
+        <Field label="Warranty / exchange policy" hint="Shown as a badge on the product page">
+          <input className="input-field" maxLength={200}
+            placeholder="e.g. Lifetime Warranty / Exchange Available"
+            value={draft.warranty}
+            onChange={(e) => setDraft({ warranty: e.target.value })} />
+        </Field>
+
+        <Field label="Certificate image" hint="Upload an IGI / GIA / BIS hallmark certificate scan (JPG, PNG, or PDF)">
+          <input type="file" accept="image/*,application/pdf"
+            onChange={(e) => setDraft({ certificateFile: e.target.files?.[0] ?? null })} />
+          {draft.existingCertificateUrl && !draft.certificateFile && (
+            <a href={draft.existingCertificateUrl} target="_blank" rel="noreferrer"
+              className="inline-block mt-2 text-xs text-brand-700 font-semibold hover:underline">
+              Current certificate ↗
+            </a>
+          )}
+        </Field>
+
         <div>
           <p className="text-sm font-semibold text-ink-900">Renewal options <span className="text-danger">*</span></p>
           <p className="text-xs text-ink-500 mt-0.5 mb-3">Listings stay live for four months and then renew or expire.</p>

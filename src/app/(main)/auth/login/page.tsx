@@ -6,6 +6,7 @@ import Link from 'next/link';
 import toast from 'react-hot-toast';
 import { api, setToken } from '@/lib/api';
 import { GoogleButton } from '@/components/auth/GoogleButton';
+import { useCart } from '@/lib/cart';
 
 const PERKS = [
   'Discover handcrafted pieces from Indian jewelers',
@@ -49,6 +50,7 @@ function LoginInner() {
         auth: false,
       });
       setToken(data.token);
+      await useCart.getState().mergeAndHydrate();
       toast.success('Welcome back!');
       routeByRole(data.user.role);
     } catch (e: any) {
@@ -68,6 +70,7 @@ function LoginInner() {
         auth: false,
       });
       setToken(data.token);
+      await useCart.getState().mergeAndHydrate();
       toast.success('Welcome back!');
       routeByRole(data.user.role);
     } catch (e: any) {

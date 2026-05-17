@@ -1,11 +1,18 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
 import { api } from '@/lib/api';
 import { useCart, addToCartWithVendorGuard } from '@/lib/cart';
 import { Stars } from '@/components/storefront/ProductCard';
+import { WishlistButton } from '@/components/WishlistButton';
+import { ProductGallery } from '@/components/products/ProductGallery';
+import { DeliveryEstimator } from '@/components/products/DeliveryEstimator';
+import { ProductRail } from '@/components/products/ProductRail';
+import { ProductQA } from '@/components/products/ProductQA';
+import type { ProductCardData } from '@/components/storefront/ProductCard';
+import { pushRecentlyViewed, getRecentlyViewed } from '@/lib/recently-viewed';
 
 interface VariationOption { id: string; value: string; position: number }
 interface Variation { id: string; name: string; position: number; options: VariationOption[] }
@@ -13,8 +20,15 @@ interface VariationCombo { id: string; optionIds: string[]; price: string | null
 
 interface Product {
   id: string;
+  slug?: string | null;
   name: string;
+  brand?: string | null;
   description: string | null;
+  highlights?: string[];
+  warranty?: string | null;
+  certificateImageUrl?: string | null;
+  seoTitle?: string | null;
+  seoDescription?: string | null;
   category: { id: string; name: string; slug: string };
   metalType: string | null;
   materials?: string[];
@@ -28,6 +42,8 @@ interface Product {
   price: string;
   stockQuantity: number;
   images: string[];
+  imageAlts?: string[];
+  videoUrl?: string | null;
   vendor: { id: string; shopName: string; shopLogoUrl: string | null };
   attributeValues: { attribute: { id: string; name: string; inputType: string }; value: string }[];
   variations?: Variation[];
@@ -59,6 +75,8 @@ interface ReviewItem {
   mediaUrls: string[];
   mediaTypes: string[];
   createdAt: string;
+  vendorResponse: string | null;
+  vendorRespondedAt: string | null;
   customer: { name: string };
 }
 
@@ -71,12 +89,17 @@ interface ReviewsData {
   limit: number;
 }
 
-function buildHighlights(policy: Product['returnPolicy']): string[] {
+function buildHighlights(product: Product): string[] {
+  // Prefer seller-defined highlights from the listing editor.
+  if (product.highlights && product.highlights.length > 0) {
+    return product.highlights.slice(0, 8);
+  }
+  const policy = product.returnPolicy;
   const returnsLine = policy
     ? (policy.accepted ? `${policy.days}-day easy returns` : 'Final sale — no returns')
     : '30-day easy returns';
   return [
-    'BIS-hallmarked materials',
+    product.warranty || 'BIS-hallmarked materials',
     'Ships in 2 business days',
     returnsLine,
     'Certified vendor',
@@ -120,8 +143,23 @@ function RatingBar({ star, count, total }: { star: number; count: number; total:
 export default function ProductDetailPage({ params }: { params: { id: string } }) {
   const router = useRouter();
   const [product, setProduct] = useState<Product | null>(null);
-  const [activeImage, setActiveImage] = useState(0);
   const [qty, setQty] = useState(1);
+  const ctaRef = useRef<HTMLDivElement>(null);
+  const [stickyVisible, setStickyVisible] = useState(false);
+
+  useEffect(() => {
+    const el = ctaRef.current;
+    if (!el) return;
+    const io = new IntersectionObserver(
+      ([entry]) => setStickyVisible(!entry.isIntersecting),
+      { rootMargin: '0px', threshold: 0 },
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, [product]);
+
+  const [related, setRelated] = useState<ProductCardData[]>([]);
+  const [recentlyViewed, setRecentlyViewed] = useState<ProductCardData[]>([]);
   const [openSection, setOpenSection] = useState<string>('description');
   const [selectedOpts, setSelectedOpts] = useState<Record<string, string>>({});
   const [personalizationText, setPersonalizationText] = useState('');
@@ -146,10 +184,40 @@ export default function ProductDetailPage({ params }: { params: { id: string } }
     const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
 
     api<Product>(`/api/products/${params.id}`, { auth: false })
-      .then(setProduct)
+      .then((p) => {
+        setProduct(p);
+        // Apply SEO title + description to the document head (client-only).
+        if (typeof document !== 'undefined') {
+          const title = p.seoTitle || `${p.name} — ${p.vendor.shopName}`;
+          document.title = title;
+          const desc = p.seoDescription || (p.description ?? '').slice(0, 200);
+          let meta = document.querySelector('meta[name="description"]') as HTMLMetaElement | null;
+          if (!meta) {
+            meta = document.createElement('meta');
+            meta.name = 'description';
+            document.head.appendChild(meta);
+          }
+          meta.content = desc;
+        }
+      })
       .catch(() => router.push('/products'));
 
     loadReviews(params.id);
+
+    api<{ items: ProductCardData[] }>(`/api/products/${params.id}/related`, { auth: false, silent: true })
+      .then((r) => setRelated(r.items))
+      .catch(() => {});
+
+    const recentIds = getRecentlyViewed().filter((id) => id !== params.id);
+    if (recentIds.length > 0) {
+      api<{ items: ProductCardData[] }>('/api/products/by-ids', {
+        method: 'POST', auth: false, silent: true,
+        body: JSON.stringify({ ids: recentIds }),
+      })
+        .then((r) => setRecentlyViewed(r.items))
+        .catch(() => {});
+    }
+    pushRecentlyViewed(params.id);
 
     if (token) {
       api<{ canReview: boolean; alreadyReviewed: boolean }>(
@@ -291,31 +359,7 @@ export default function ProductDetailPage({ params }: { params: { id: string } }
 
       <div className="grid lg:grid-cols-[1fr_440px] gap-10">
         {/* GALLERY */}
-        <div className="flex gap-4">
-          <div className="hidden md:flex flex-col gap-2 w-20 shrink-0">
-            {product.images.map((img, i) => (
-              <button key={i} onClick={() => setActiveImage(i)}
-                className={`aspect-square rounded-md overflow-hidden border-2 transition ${i === activeImage ? 'border-ink-900' : 'border-transparent hover:border-line'}`}>
-                <img src={img} alt="" className="w-full h-full object-cover" />
-              </button>
-            ))}
-          </div>
-          <div className="flex-1">
-            <div className="aspect-square bg-stone-100 rounded-md overflow-hidden">
-              {product.images[activeImage] && (
-                <img src={product.images[activeImage]} alt={product.name} className="w-full h-full object-cover" />
-              )}
-            </div>
-            <div className="md:hidden mt-3 flex gap-2 overflow-x-auto no-scrollbar">
-              {product.images.map((img, i) => (
-                <button key={i} onClick={() => setActiveImage(i)}
-                  className={`w-16 h-16 shrink-0 rounded-md overflow-hidden border-2 ${i === activeImage ? 'border-ink-900' : 'border-transparent'}`}>
-                  <img src={img} alt="" className="w-full h-full object-cover" />
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
+        <ProductGallery name={product.name} images={product.images} imageAlts={product.imageAlts} videoUrl={product.videoUrl} />
 
         {/* INFO */}
         <div className="lg:sticky lg:top-32 self-start space-y-5">
@@ -324,6 +368,12 @@ export default function ProductDetailPage({ params }: { params: { id: string } }
               <Link href={`/products?vendor=${product.vendor.id}`} className="text-sm text-ink-500 hover:text-brand-700 underline underline-offset-2">
                 {product.vendor.shopName}
               </Link>
+              {product.brand && (
+                <>
+                  <span className="text-ink-400 text-xs">·</span>
+                  <span className="text-xs font-semibold text-ink-700">{product.brand}</span>
+                </>
+              )}
               {product.shopSection && (
                 <>
                   <span className="text-ink-400 text-xs">·</span>
@@ -446,20 +496,31 @@ export default function ProductDetailPage({ params }: { params: { id: string } }
               <span className="w-10 text-center text-sm font-semibold">{qty}</span>
               <button onClick={() => setQty((q) => Math.min(effectiveStock || 99, q + 1))} className="w-10 h-10 hover:bg-canvas">+</button>
             </div>
-            <p className={`text-xs mt-2 ${inStock ? 'text-success' : 'text-danger'}`}>
+            <p className={`text-xs mt-2 font-semibold ${
+              !inStock ? 'text-danger'
+                : variations.length > 0 && !allVariationsPicked ? 'text-ink-700'
+                : effectiveStock <= 5 ? 'text-amber-700'
+                : 'text-success'
+            }`}>
               {variations.length > 0 && !allVariationsPicked
                 ? 'Select all variations to see stock'
-                : inStock ? `${effectiveStock} in stock — ready to ship` : 'Out of stock'}
+                : !inStock ? 'Out of stock'
+                : effectiveStock === 1 ? '⚡ Only 1 left — order soon!'
+                : effectiveStock <= 5 ? `⚡ Only ${effectiveStock} left — order soon!`
+                : `${effectiveStock} in stock — ready to ship`}
             </p>
           </div>
 
-          <div className="space-y-2 pt-2">
+          <div ref={ctaRef} className="space-y-2 pt-2">
             <button onClick={() => addToCart(false)} disabled={!inStock} className="btn-primary w-full">Add to cart</button>
             <button onClick={() => addToCart(true)} disabled={!inStock} className="btn-secondary w-full">Buy it now</button>
+            <WishlistButton productId={product.id} variant="pill" className="w-full justify-center" />
           </div>
 
+          <DeliveryEstimator productId={product.id} />
+
           <ul className="space-y-2 pt-2">
-            {buildHighlights(product.returnPolicy).map((h) => (
+            {buildHighlights(product).map((h) => (
               <li key={h} className="flex items-center gap-2 text-sm text-ink-700">
                 <span className="text-success">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
@@ -489,6 +550,7 @@ export default function ProductDetailPage({ params }: { params: { id: string } }
                       ? `${product.returnPolicy.days}-day returns from delivery${product.returnPolicy.buyerPaysReturn ? ' · buyer pays return shipping' : ' · seller pays return shipping'}.${product.returnPolicy.notes ? `\n\n${product.returnPolicy.notes}` : ''}`
                       : `This shop does not accept returns on this item.${product.returnPolicy.notes ? `\n\n${product.returnPolicy.notes}` : ''}`)
                   : 'Ships in 2 business days.' },
+              ...(product.warranty ? [{ id: 'warranty', title: 'Warranty', body: product.warranty }] : []),
             ].map((s) => (
               <div key={s.id} className="border-b border-line">
                 <button onClick={() => setOpenSection((o) => (o === s.id ? '' : s.id))}
@@ -502,6 +564,19 @@ export default function ProductDetailPage({ params }: { params: { id: string } }
               </div>
             ))}
           </div>
+
+          {product.certificateImageUrl && (
+            <div className="pt-3">
+              <a href={product.certificateImageUrl} target="_blank" rel="noreferrer"
+                className="inline-flex items-center gap-2 px-3 py-2 rounded-md border border-line bg-canvas text-sm font-semibold text-ink-900 hover:border-brand-700 hover:text-brand-700 transition">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="3" y="3" width="18" height="18" rx="2" />
+                  <path d="M9 9h6M9 13h6M9 17h4" />
+                </svg>
+                View certificate ↗
+              </a>
+            </div>
+          )}
 
           {product.tags && product.tags.length > 0 && (
             <div className="pt-3">
@@ -677,10 +752,49 @@ export default function ProductDetailPage({ params }: { params: { id: string } }
                     ))}
                   </div>
                 )}
+                {review.vendorResponse && (
+                  <div className="mt-3 ml-13 pl-3 border-l-2 border-brand-200">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-xs uppercase tracking-wide font-semibold text-brand-700">
+                        Response from {product.vendor.shopName}
+                      </span>
+                      {review.vendorRespondedAt && (
+                        <span className="text-xs text-ink-500">
+                          · {new Date(review.vendorRespondedAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-sm text-ink-700 whitespace-pre-line">{review.vendorResponse}</p>
+                  </div>
+                )}
               </div>
             ))}
           </div>
         )}
+      </div>
+
+      <ProductQA productId={product.id} />
+
+      <ProductRail title="You may also like" subtitle="More from the same category" items={related} />
+      <ProductRail title="Recently viewed" items={recentlyViewed} />
+
+      {/* Sticky mobile CTA — shown when the in-flow CTA scrolls out of view */}
+      <div
+        className={`md:hidden fixed inset-x-0 bottom-0 z-40 bg-surface border-t border-line shadow-pop transition-transform ${
+          stickyVisible ? 'translate-y-0' : 'translate-y-full'
+        }`}
+        style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
+      >
+        <div className="px-4 py-3 flex items-center gap-3">
+          <div className="flex-1 min-w-0">
+            <p className="text-[11px] uppercase tracking-wide text-ink-500">Price</p>
+            <p className="font-bold text-ink-900 truncate">
+              ₹{effectivePrice.toLocaleString('en-IN')}
+            </p>
+          </div>
+          <button onClick={() => addToCart(false)} disabled={!inStock} className="btn-secondary !py-2 !px-4 text-sm">Add</button>
+          <button onClick={() => addToCart(true)} disabled={!inStock} className="btn-primary !py-2 !px-4 text-sm">Buy now</button>
+        </div>
       </div>
     </div>
   );

@@ -51,7 +51,7 @@ export default function VendorOrderDetailPage() {
   const router = useRouter();
   const params = useParams<{ vendorId: string; id: string }>();
   const id = params?.id;
-  const { vendor, theme } = useVendor();
+  const { vendor, theme, storeKey } = useVendor();
 
   const [order, setOrder]       = useState<Order | null>(null);
   const [loading, setLoading]   = useState(true);
@@ -62,7 +62,7 @@ export default function VendorOrderDetailPage() {
   useEffect(() => {
     if (!id) return;
     const t = typeof window !== 'undefined' ? window.localStorage.getItem('token') : null;
-    const next = `/store/${vendor.id}/orders/${id}`;
+    const next = `/store/${storeKey}/orders/${id}`;
     if (!t) { router.replace(`/auth/login?next=${encodeURIComponent(next)}`); return; }
     api<Order>(`/api/orders/me/${id}`, { silent: true })
       .then((o) => { setOrder(o); setLoading(false); })
@@ -108,7 +108,7 @@ export default function VendorOrderDetailPage() {
       <div className="max-w-5xl mx-auto px-6 py-16 text-center">
         <h1 className="text-2xl text-ink-900">Order not found</h1>
         <p className="text-sm text-ink-500 mt-1.5">We couldn't find that order from {vendor.shopName}.</p>
-        <Link href={`/store/${vendor.id}/orders`}
+        <Link href={`/store/${storeKey}/orders`}
           className="inline-block mt-6 px-5 py-2.5 rounded-pill text-white font-semibold hover:opacity-90"
           style={{ background: theme }}
         >
@@ -123,9 +123,9 @@ export default function VendorOrderDetailPage() {
   return (
     <div className="max-w-5xl mx-auto px-6 py-8">
       <nav className="text-xs mb-3">
-        <Link href={`/store/${vendor.id}`} className="hover:opacity-70" style={{ color: theme }}>{vendor.shopName}</Link>
+        <Link href={`/store/${storeKey}`} className="hover:opacity-70" style={{ color: theme }}>{vendor.shopName}</Link>
         <span className="mx-1.5 text-ink-500">/</span>
-        <Link href={`/store/${vendor.id}/orders`} className="text-ink-500 hover:text-ink-900">My orders</Link>
+        <Link href={`/store/${storeKey}/orders`} className="text-ink-500 hover:text-ink-900">My orders</Link>
         <span className="mx-1.5 text-ink-500">/</span>
         <span className="text-ink-900">#{order.id.slice(0, 8).toUpperCase()}</span>
       </nav>
@@ -157,7 +157,7 @@ export default function VendorOrderDetailPage() {
             <ul className="divide-y divide-line">
               {scoped.items.map((it) => {
                 const trk = trackData[it.id];
-                const productHref = `/store/${vendor.id}/products/${it.product.id}`;
+                const productHref = `/store/${storeKey}/products/${(it.product as any).slug || it.product.id}`;
                 return (
                   <li key={it.id} className="p-5">
                     <div className="flex gap-4">
