@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { api } from '@/lib/api';
+import { useCurrency, formatPrice } from '@/lib/currency';
 
 interface Props {
   productId: string;
@@ -44,6 +45,7 @@ function guessStateFromPin(pin: string): string {
 }
 
 export function DeliveryEstimator({ productId }: Props) {
+  const { code } = useCurrency();
   const [pin, setPin] = useState('');
   const [eta, setEta] = useState<{ minDays: number; maxDays: number; cheapest: number; pin: string } | null>(null);
   const [busy, setBusy] = useState(false);
@@ -134,7 +136,7 @@ export function DeliveryEstimator({ productId }: Props) {
             Delivers by <span className="font-semibold">{formatDeliveryRange(new Date(), eta.minDays, eta.maxDays)}</span>
           </p>
           <p className="text-xs text-ink-500 mt-0.5">
-            to {eta.pin} · from ₹{eta.cheapest.toLocaleString('en-IN')} shipping
+            to {eta.pin} · from {formatPrice(eta.cheapest, code)} shipping
           </p>
         </div>
       )}

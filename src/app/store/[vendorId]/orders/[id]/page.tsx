@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
 import { useVendor } from '@/lib/vendor-context';
+import { useCurrency, formatPrice } from '@/lib/currency';
 
 interface OrderItem {
   id: string;
@@ -49,6 +50,7 @@ const TIMELINE: { key: string; label: string }[] = [
 
 export default function VendorOrderDetailPage() {
   const router = useRouter();
+  const { code } = useCurrency();
   const params = useParams<{ vendorId: string; id: string }>();
   const id = params?.id;
   const { vendor, theme, storeKey } = useVendor();
@@ -170,7 +172,7 @@ export default function VendorOrderDetailPage() {
                         <Link href={productHref} className="text-sm font-medium text-ink-900 hover:underline line-clamp-2" style={{ textDecorationColor: theme }}>
                           {it.product.name}
                         </Link>
-                        <p className="text-xs text-ink-500 mt-0.5">Qty {it.quantity} · ₹{Number(it.priceAtPurchase).toLocaleString('en-IN')} each</p>
+                        <p className="text-xs text-ink-500 mt-0.5">Qty {it.quantity} · {formatPrice(it.priceAtPurchase, code)} each</p>
                         {it.shippingCarrier && (
                           <p className="text-xs text-ink-500 mt-1.5">
                             <span className="text-ink-700 font-medium">Shipping:</span> {it.shippingCarrier}
@@ -180,7 +182,7 @@ export default function VendorOrderDetailPage() {
                         )}
                       </div>
                       <div className="text-right shrink-0">
-                        <p className="text-sm font-semibold text-ink-900">₹{(Number(it.priceAtPurchase) * it.quantity).toLocaleString('en-IN')}</p>
+                        <p className="text-sm font-semibold text-ink-900">{formatPrice(Number(it.priceAtPurchase) * it.quantity, code)}</p>
                         <div className="mt-1.5"><ThemedStatusPill status={it.status} accent={theme} /></div>
                       </div>
                     </div>
@@ -233,15 +235,15 @@ export default function VendorOrderDetailPage() {
           <div className="bg-surface border border-line rounded-md shadow-card p-5">
             <h2 className="text-sm font-semibold text-ink-900 mb-3">Summary</h2>
             <dl className="space-y-2 text-sm">
-              <div className="flex justify-between"><dt className="text-ink-700">Items</dt><dd className="text-ink-900">₹{scoped.goodsTotal.toLocaleString('en-IN')}</dd></div>
-              <div className="flex justify-between"><dt className="text-ink-700">Shipping</dt><dd className="text-ink-900">{scoped.shipping > 0 ? `₹${scoped.shipping.toLocaleString('en-IN')}` : 'Free'}</dd></div>
+              <div className="flex justify-between"><dt className="text-ink-700">Items</dt><dd className="text-ink-900">{formatPrice(scoped.goodsTotal, code)}</dd></div>
+              <div className="flex justify-between"><dt className="text-ink-700">Shipping</dt><dd className="text-ink-900">{scoped.shipping > 0 ? formatPrice(scoped.shipping, code) : 'Free'}</dd></div>
               <div className="border-t border-line pt-2 mt-2 flex justify-between font-semibold">
                 <dt className="text-ink-900">From this shop</dt>
-                <dd className="text-ink-900">₹{(scoped.goodsTotal + scoped.shipping).toLocaleString('en-IN')}</dd>
+                <dd className="text-ink-900">{formatPrice(scoped.goodsTotal + scoped.shipping, code)}</dd>
               </div>
               {scoped.items.length !== order.items.length && (
                 <p className="text-[11px] text-ink-500 pt-1">
-                  Your full order total (incl. items from other shops) was ₹{Number(order.totalAmount).toLocaleString('en-IN')}.
+                  Your full order total (incl. items from other shops) was {formatPrice(order.totalAmount, code)}.
                 </p>
               )}
             </dl>

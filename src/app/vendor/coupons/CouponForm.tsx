@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
 import { api } from '@/lib/api';
+import { useCurrency, CURRENCIES } from '@/lib/currency';
 
 interface VendorProduct { id: string; name: string }
 
@@ -60,6 +61,8 @@ export function CouponForm({
   couponId?: string;
 }) {
   const router = useRouter();
+  const { code } = useCurrency();
+  const currencySymbol = CURRENCIES[code].symbol;
   const [values, setValues] = useState<CouponFormValues>(initial);
   const [products, setProducts] = useState<VendorProduct[]>([]);
   const [saving, setSaving] = useState(false);
@@ -149,10 +152,10 @@ export function CouponForm({
               onChange={(e) => patch('discountType', e.target.value as 'PERCENT' | 'FLAT')}
             >
               <option value="PERCENT">Percent (%)</option>
-              <option value="FLAT">Flat (₹)</option>
+              <option value="FLAT">Flat ({currencySymbol})</option>
             </select>
           </Field>
-          <Field label={values.discountType === 'PERCENT' ? 'Percent off' : 'Amount off (₹)'}>
+          <Field label={values.discountType === 'PERCENT' ? 'Percent off' : `Amount off (${currencySymbol})`}>
             <input
               className="input-field"
               type="number"
@@ -165,7 +168,7 @@ export function CouponForm({
         </div>
 
         {values.discountType === 'PERCENT' && (
-          <Field label="Max discount cap (₹, optional)">
+          <Field label={`Max discount cap (${currencySymbol}, optional)`}>
             <input
               className="input-field"
               type="number"
@@ -177,7 +180,7 @@ export function CouponForm({
           </Field>
         )}
 
-        <Field label="Minimum order amount (₹, optional)">
+        <Field label={`Minimum order amount (${currencySymbol}, optional)`}>
           <input
             className="input-field"
             type="number"

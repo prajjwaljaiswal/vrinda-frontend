@@ -4,9 +4,11 @@ import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
 import { useCart } from '@/lib/cart';
 import { useWishlist } from '@/lib/wishlist';
+import { useCurrency, formatPrice } from '@/lib/currency';
 
 export default function CartPage() {
   const router = useRouter();
+  const { code } = useCurrency();
   const { items, setQty, remove, total } = useCart();
   const addToWishlist = useWishlist((s) => s.add);
 
@@ -83,10 +85,10 @@ export default function CartPage() {
                   </div>
                 </div>
                 <div className="text-right shrink-0">
-                  <p className="font-bold text-ink-900">₹{(i.price * i.quantity).toLocaleString('en-IN')}</p>
+                  <p className="font-bold text-ink-900">{formatPrice(i.price * i.quantity, code)}</p>
                   {i.quantity > 1 && (
                     <p className="text-xs text-ink-500 mt-0.5">
-                      ₹{i.price.toLocaleString('en-IN')} × {i.quantity}
+                      {formatPrice(i.price, code)} × {i.quantity}
                     </p>
                   )}
                 </div>
@@ -100,7 +102,7 @@ export default function CartPage() {
           <dl className="space-y-2 text-sm">
             <div className="flex justify-between">
               <dt className="text-ink-700">Subtotal ({items.reduce((n, i) => n + i.quantity, 0)} items)</dt>
-              <dd className="font-semibold text-ink-900">₹{subtotal.toLocaleString('en-IN')}</dd>
+              <dd className="font-semibold text-ink-900">{formatPrice(subtotal, code)}</dd>
             </div>
             <div className="flex justify-between">
               <dt className="text-ink-700">Shipping</dt>
@@ -116,7 +118,7 @@ export default function CartPage() {
 
           <div className="flex justify-between items-baseline mb-5">
             <span className="font-semibold text-ink-900">Total</span>
-            <span className="font-display text-2xl text-ink-900">₹{subtotal.toLocaleString('en-IN')}</span>
+            <span className="font-display text-2xl text-ink-900">{formatPrice(subtotal, code)}</span>
           </div>
 
           <button onClick={() => router.push('/checkout')} className="btn-primary w-full !py-3">

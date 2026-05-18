@@ -6,6 +6,7 @@ import toast from 'react-hot-toast';
 import { api } from '@/lib/api';
 import { useCart, addToCartWithVendorGuard } from '@/lib/cart';
 import { useVendor } from '@/lib/vendor-context';
+import { useCurrency, formatPrice } from '@/lib/currency';
 import { Stars } from '@/components/storefront/ProductCard';
 import { ProductGallery } from '@/components/products/ProductGallery';
 
@@ -117,6 +118,7 @@ function RatingBar({ star, count, total }: { star: number; count: number; total:
 
 export function LegacyVendorProductDetailPage({ params }: { params: { vendorId: string; id: string } }) {
   const router = useRouter();
+  const { code } = useCurrency();
   const { vendor, theme, storeKey } = useVendor();
   const [product, setProduct] = useState<Product | null>(null);
   const [qty, setQty] = useState(1);
@@ -292,7 +294,7 @@ export function LegacyVendorProductDetailPage({ params }: { params: { vendorId: 
           </div>
 
           <div className="flex items-baseline gap-3">
-            <span className="text-3xl font-bold text-ink-900">₹{effectivePrice.toLocaleString('en-IN')}</span>
+            <span className="text-3xl font-bold text-ink-900">{formatPrice(effectivePrice, code)}</span>
             <span className="text-sm text-ink-500">incl. of all taxes</span>
           </div>
 

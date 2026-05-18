@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { api } from '@/lib/api';
 import { StepHeader, StepProps, Field, ComingSoonBadge } from '../StepShell';
+import { useCurrency, CURRENCIES } from '@/lib/currency';
 import { MakingChargeType, SHOWS_WEIGHT, SHOWS_MAKING_CHARGE } from '../types';
 
 interface ReturnPolicy {
@@ -21,6 +22,8 @@ interface ShippingMethod {
 }
 
 export function PricingStep({ draft, setDraft }: StepProps) {
+  const { code } = useCurrency();
+  const currencySymbol = CURRENCIES[code].symbol;
   const [methods, setMethods] = useState<ShippingMethod[]>([]);
   const [policies, setPolicies] = useState<ReturnPolicy[]>([]);
   const [showSku, setShowSku] = useState(!!draft.sku);
@@ -54,9 +57,9 @@ export function PricingStep({ draft, setDraft }: StepProps) {
           <p className="text-xs text-ink-500 mt-0.5 mb-4">Set your item price, and how many are available for sale.</p>
 
           <div className="grid sm:grid-cols-2 gap-4">
-            <Field label="Price (₹)" required>
+            <Field label={`Price (${currencySymbol})`} required>
               <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-500 text-sm">₹</span>
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-500 text-sm">{currencySymbol}</span>
                 <input className="input-field pl-7" type="number" min="0" step="0.01"
                   value={draft.price} onChange={(e) => setDraft({ price: e.target.value })} required />
               </div>
@@ -197,7 +200,7 @@ export function PricingStep({ draft, setDraft }: StepProps) {
                 <p className="text-sm font-semibold text-ink-900">{selectedMethod.name}</p>
                 <p className="text-xs text-ink-500">
                   {selectedMethod.carrier} · {selectedMethod.etaMinDays}–{selectedMethod.etaMaxDays} days
-                  {Number(selectedMethod.baseRate) > 0 ? ` · ₹${selectedMethod.baseRate} base` : ' · Free'}
+                  {Number(selectedMethod.baseRate) > 0 ? ` · ${currencySymbol}${selectedMethod.baseRate} base` : ' · Free'}
                 </p>
               </div>
               <button type="button" onClick={() => setDraft({ shippingMethodId: '' })}
@@ -212,7 +215,7 @@ export function PricingStep({ draft, setDraft }: StepProps) {
                   <p className="text-sm font-semibold text-ink-900">{m.name}</p>
                   <p className="text-xs text-ink-500 mt-0.5">
                     {m.carrier} · {m.etaMinDays}–{m.etaMaxDays} days
-                    {Number(m.baseRate) > 0 ? ` · ₹${m.baseRate} base` : ' · Free'}
+                    {Number(m.baseRate) > 0 ? ` · ${currencySymbol}${m.baseRate} base` : ' · Free'}
                   </p>
                 </button>
               ))}

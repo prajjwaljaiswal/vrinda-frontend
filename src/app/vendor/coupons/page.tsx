@@ -4,6 +4,7 @@ import Link from 'next/link';
 import toast from 'react-hot-toast';
 import { api } from '@/lib/api';
 import { PageHeader, Card } from '@/components/dashboard/DashboardShell';
+import { useCurrency, formatPrice, CURRENCIES } from '@/lib/currency';
 
 interface CouponProduct { id: string; name: string }
 interface Coupon {
@@ -25,6 +26,8 @@ interface Coupon {
 }
 
 export default function VendorCouponsPage() {
+  const { code } = useCurrency();
+  const currencySymbol = CURRENCIES[code]?.symbol ?? '₹';
   const [coupons, setCoupons] = useState<Coupon[] | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -102,8 +105,8 @@ export default function VendorCouponsPage() {
                   <td className="px-4 py-3 font-mono font-semibold text-ink-900">{c.code}</td>
                   <td className="px-4 py-3">
                     {c.discountType === 'PERCENT'
-                      ? `${Number(c.value)}% off${c.maxDiscount ? ` (max ₹${Number(c.maxDiscount)})` : ''}`
-                      : `₹${Number(c.value)} off`}
+                      ? `${Number(c.value)}% off${c.maxDiscount ? ` (max ${formatPrice(Number(c.maxDiscount), code)})` : ''}`
+                      : `${formatPrice(Number(c.value), code)} off`}
                   </td>
                   <td className="px-4 py-3">
                     {c.scope === 'VENDOR'
@@ -111,7 +114,7 @@ export default function VendorCouponsPage() {
                       : `${c.products.length} product${c.products.length === 1 ? '' : 's'}`}
                   </td>
                   <td className="px-4 py-3">
-                    {c.minOrderAmount ? `₹${Number(c.minOrderAmount)}` : '—'}
+                    {c.minOrderAmount ? formatPrice(Number(c.minOrderAmount), code) : '—'}
                   </td>
                   <td className="px-4 py-3">
                     {c.usedCount}{c.usageLimit ? ` / ${c.usageLimit}` : ''}

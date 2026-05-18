@@ -11,6 +11,7 @@ import { api } from '@/lib/api';
 import { ProductGallery } from '@/components/products/ProductGallery';
 import { ProductCard, Stars } from '@/components/storefront/ProductCard';
 import { usePdp, PdpFallback } from './PdpContext';
+import { useCurrency, formatPrice } from '@/lib/currency';
 
 const WHO_MADE_LABEL: Record<string, string> = {
   I_DID: 'I made it',
@@ -40,6 +41,7 @@ export function PdpGalleryRenderer({ settings }: { settings: any; ctx: any }) {
 
 // ── Summary (vendor name, title, rating) ────────────────────────────────────
 export function PdpSummaryRenderer({ settings }: { settings: any; ctx: any }) {
+  const { code } = useCurrency();
   const pdp = usePdp();
   if (!pdp) return <PdpFallback label="Product summary" hint="Title, vendor, rating, price." />;
   const { product, theme, reviewsData } = pdp;
@@ -72,7 +74,7 @@ export function PdpSummaryRenderer({ settings }: { settings: any; ctx: any }) {
         </div>
       )}
       <div className="flex items-baseline gap-3 mt-4">
-        <span className="text-3xl font-bold text-ink-900">₹{pdp.effectivePrice.toLocaleString('en-IN')}</span>
+        <span className="text-3xl font-bold text-ink-900">{formatPrice(pdp.effectivePrice, code)}</span>
         <span className="text-sm text-ink-500">incl. of all taxes</span>
       </div>
     </div>

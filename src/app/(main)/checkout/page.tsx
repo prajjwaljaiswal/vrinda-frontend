@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
 import { useCart } from '@/lib/cart';
+import { useCurrency, formatPrice } from '@/lib/currency';
 import { useWishlist } from '@/lib/wishlist';
 import { api } from '@/lib/api';
 import { addressApi, type Address } from '@/lib/addresses';
@@ -34,6 +35,7 @@ interface QuoteGroup {
 
 export default function CheckoutPage() {
   const router = useRouter();
+  const { code } = useCurrency();
   const { items, setQty, remove, total, clear } = useCart();
   const addToWishlist = useWishlist((s) => s.add);
 
@@ -596,7 +598,7 @@ export default function CheckoutPage() {
                     const s = shipSel[g.vendorId];
                     return s && opt.methodId === s.methodId && opt.serviceCode === s.serviceCode;
                   });
-                  return o ? `${o.name} · ${o.etaMinDays}–${o.etaMaxDays} days · ${o.amount === 0 ? 'Free' : `₹${o.amount}`}` : '';
+                  return o ? `${o.name} · ${o.etaMinDays}–${o.etaMaxDays} days · ${o.amount === 0 ? 'Free' : formatPrice(o.amount, code)}` : '';
                 }).filter(Boolean).join(' · ')
               : addressComplete ? 'Pick a delivery option' : 'Complete address first'
             }
@@ -660,7 +662,7 @@ export default function CheckoutPage() {
                                   </p>
                                 </div>
                                 <p className="text-sm font-semibold text-ink-900">
-                                  {o.amount === 0 ? <span className="text-success">Free</span> : `₹${o.amount.toLocaleString('en-IN')}`}
+                                  {o.amount === 0 ? <span className="text-success">Free</span> : formatPrice(o.amount, code)}
                                 </p>
                               </label>
                             );
@@ -726,7 +728,7 @@ export default function CheckoutPage() {
             <div className="pt-5 mt-5 border-t border-line flex justify-between gap-3">
               <button onClick={() => setCurrentStep(1)} className="btn-secondary !px-5">Back</button>
               <button onClick={handlePlace} disabled={loading} className="btn-primary !px-6">
-                {loading ? 'Processing…' : payMethod === 'COD' ? `Place order · ₹${grand.toLocaleString('en-IN')}` : `Pay ₹${grand.toLocaleString('en-IN')}`}
+                {loading ? 'Processing…' : payMethod === 'COD' ? `Place order · ${formatPrice(grand, code)}` : `Pay ${formatPrice(grand, code)}`}
               </button>
             </div>
           </CheckoutStep>
@@ -742,7 +744,7 @@ export default function CheckoutPage() {
                 <div className="flex items-center justify-between p-3 rounded-md border border-emerald-200 bg-emerald-50">
                   <div>
                     <p className="text-sm font-semibold text-success font-mono">{coupon.code}</p>
-                    <p className="text-xs text-ink-700">Discount applied: ₹{coupon.discount.toLocaleString('en-IN')}</p>
+                    <p className="text-xs text-ink-700">Discount applied: {formatPrice(coupon.discount, code)}</p>
                   </div>
                   <button onClick={removeCoupon} className="text-xs text-danger hover:underline">Remove</button>
                 </div>
@@ -777,7 +779,7 @@ export default function CheckoutPage() {
               <h2 className="font-semibold text-ink-900">Order summary</h2>
             </div>
             <div className="p-5 space-y-3">
-              <Row label="Subtotal" value={`₹${subtotal.toLocaleString('en-IN')}`} />
+              <Row label="Subtotal" value={formatPrice(subtotal, code)} />
               <Row
                 label="Shipping"
                 value={
@@ -787,7 +789,7 @@ export default function CheckoutPage() {
                       ? 'Enter pincode'
                       : shipping === 0 && allVendorsCovered
                         ? 'Free'
-                        : `₹${shipping.toLocaleString('en-IN')}`
+                        : formatPrice(shipping, code)
                 }
                 valueClass={shipping === 0 && allVendorsCovered ? 'text-success' : ''}
               />
@@ -800,14 +802,14 @@ export default function CheckoutPage() {
                       <button onClick={removeCoupon} className="hover:text-danger" aria-label="Remove coupon">×</button>
                     </span>
                   </span>
-                  <span className="font-medium text-success">−₹{discount.toLocaleString('en-IN')}</span>
+                  <span className="font-medium text-success">−{formatPrice(discount, code)}</span>
                 </div>
               )}
               <Row label="Estimated taxes" value="Included" muted />
               <div className="border-t border-line pt-3 flex items-baseline justify-between">
                 <span className="text-sm font-semibold text-ink-900">Total</span>
                 <div className="text-right">
-                  <p className="text-2xl font-bold text-ink-900">₹{grand.toLocaleString('en-IN')}</p>
+                  <p className="text-2xl font-bold text-ink-900">{formatPrice(grand, code)}</p>
                   <p className="text-xs text-ink-500">incl. of all taxes</p>
                 </div>
               </div>
@@ -820,8 +822,8 @@ export default function CheckoutPage() {
                 {loading
                   ? 'Processing…'
                   : payMethod === 'COD'
-                    ? `Place order · ₹${grand.toLocaleString('en-IN')} COD`
-                    : `Pay ₹${grand.toLocaleString('en-IN')}`}
+                    ? `Place order · ${formatPrice(grand, code)} COD`
+                    : `Pay ${formatPrice(grand, code)}`}
               </button>
 
               <p className="text-[11px] text-ink-500 text-center pt-1">

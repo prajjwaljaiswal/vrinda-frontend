@@ -6,9 +6,11 @@ import toast from 'react-hot-toast';
 import { useCart } from '@/lib/cart';
 import { useWishlist } from '@/lib/wishlist';
 import { useVendor } from '@/lib/vendor-context';
+import { useCurrency, formatPrice } from '@/lib/currency';
 
 export function LegacyVendorCartPage() {
   const router = useRouter();
+  const { code } = useCurrency();
   const { vendor, storeKey } = useVendor();
   const { items, setQty, remove } = useCart();
   const addToWishlist = useWishlist((s) => s.add);
@@ -76,9 +78,9 @@ export function LegacyVendorCartPage() {
                   </div>
                 </div>
                 <div className="text-right shrink-0">
-                  <p className="font-bold">₹{(i.price * i.quantity).toLocaleString('en-IN')}</p>
+                  <p className="font-bold">{formatPrice(i.price * i.quantity, code)}</p>
                   {i.quantity > 1 && (
-                    <p className="text-xs text-ink-500 mt-0.5">₹{i.price.toLocaleString('en-IN')} × {i.quantity}</p>
+                    <p className="text-xs text-ink-500 mt-0.5">{formatPrice(i.price, code)} × {i.quantity}</p>
                   )}
                 </div>
               </li>
@@ -91,7 +93,7 @@ export function LegacyVendorCartPage() {
           <dl className="space-y-2 text-sm">
             <div className="flex justify-between">
               <dt className="text-ink-700">Subtotal ({vendorItems.reduce((n, i) => n + i.quantity, 0)} items)</dt>
-              <dd className="font-semibold">₹{subtotal.toLocaleString('en-IN')}</dd>
+              <dd className="font-semibold">{formatPrice(subtotal, code)}</dd>
             </div>
             <div className="flex justify-between">
               <dt className="text-ink-700">Shipping</dt>
@@ -107,7 +109,7 @@ export function LegacyVendorCartPage() {
 
           <div className="flex justify-between items-baseline mb-5">
             <span className="font-semibold">Total</span>
-            <span className="font-display text-2xl">₹{subtotal.toLocaleString('en-IN')}</span>
+            <span className="font-display text-2xl">{formatPrice(subtotal, code)}</span>
           </div>
 
           <button onClick={() => router.push(`/store/${storeKey}/checkout`)} className="btn-primary w-full !py-3">

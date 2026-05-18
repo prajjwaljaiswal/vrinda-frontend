@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { api } from '@/lib/api';
 import { ProductCard, type ProductCardData } from '@/components/storefront/ProductCard';
 import { SearchExperience } from '@/components/search/SearchExperience';
+import { useCurrency, CURRENCIES } from '@/lib/currency';
 
 const ALGOLIA_READY =
   !!process.env.NEXT_PUBLIC_ALGOLIA_APP_ID && !!process.env.NEXT_PUBLIC_ALGOLIA_SEARCH_KEY;
@@ -32,6 +33,8 @@ interface CategoryAttribute {
 }
 
 function LegacyProductsPage() {
+  const { code } = useCurrency();
+  const currencySymbol = CURRENCIES[code].symbol;
   const [categories, setCategories] = useState<Category[]>([]);
   const [items, setItems] = useState<ProductCardData[]>([]);
   const [category, setCategory] = useState('');
@@ -104,7 +107,7 @@ function LegacyProductsPage() {
     if (minPrice || maxPrice) {
       chips.push({
         key: 'price',
-        label: `₹${minPrice || 0} – ₹${maxPrice || '∞'}`,
+        label: `${currencySymbol}${minPrice || 0} – ${currencySymbol}${maxPrice || '∞'}`,
         clear: () => { setMinPrice(''); setMaxPrice(''); },
       });
     }
@@ -161,7 +164,7 @@ function LegacyProductsPage() {
             </div>
           </FilterSection>
 
-          <FilterSection title="Price">
+          <FilterSection title={`Price (${currencySymbol})`}>
             <div className="flex items-center gap-2">
               <input
                 value={minPrice}

@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
+import { useCurrency, formatPrice } from '@/lib/currency';
 
 interface OrderItem {
   id: string;
@@ -111,6 +112,7 @@ function Timeline({ status }: { status: string }) {
 
 export default function OrderDetailPage() {
   const router = useRouter();
+  const { code } = useCurrency();
   const params = useParams<{ id: string }>();
   const id = params?.id;
   const [order, setOrder] = useState<Order | null>(null);
@@ -214,7 +216,7 @@ export default function OrderDetailPage() {
                         <p className="text-xs text-ink-500 mt-0.5">
                           Sold by <span className="text-ink-700">{it.vendor.shopName}</span>
                         </p>
-                        <p className="text-xs text-ink-500 mt-0.5">Qty {it.quantity} · ₹{Number(it.priceAtPurchase).toLocaleString('en-IN')} each</p>
+                        <p className="text-xs text-ink-500 mt-0.5">Qty {it.quantity} · {formatPrice(it.priceAtPurchase, code)} each</p>
                         {it.shippingCarrier && (
                           <p className="text-xs text-ink-500 mt-1.5">
                             <span className="text-ink-700 font-medium">Shipping:</span> {it.shippingCarrier}
@@ -224,7 +226,7 @@ export default function OrderDetailPage() {
                         )}
                       </div>
                       <div className="text-right shrink-0">
-                        <p className="text-sm font-semibold text-ink-900">₹{(Number(it.priceAtPurchase) * it.quantity).toLocaleString('en-IN')}</p>
+                        <p className="text-sm font-semibold text-ink-900">{formatPrice(Number(it.priceAtPurchase) * it.quantity, code)}</p>
                         <div className="mt-1.5"><StatusPill status={it.status} /></div>
                       </div>
                     </div>
@@ -278,11 +280,11 @@ export default function OrderDetailPage() {
           <div className="bg-surface border border-line rounded-md shadow-card p-5">
             <h2 className="text-sm font-semibold text-ink-900 mb-3">Order summary</h2>
             <dl className="space-y-2 text-sm">
-              <div className="flex justify-between"><dt className="text-ink-700">Items</dt><dd className="text-ink-900">₹{goodsTotal.toLocaleString('en-IN')}</dd></div>
-              <div className="flex justify-between"><dt className="text-ink-700">Shipping</dt><dd className="text-ink-900">{shipping > 0 ? `₹${shipping.toLocaleString('en-IN')}` : 'Free'}</dd></div>
+              <div className="flex justify-between"><dt className="text-ink-700">Items</dt><dd className="text-ink-900">{formatPrice(goodsTotal, code)}</dd></div>
+              <div className="flex justify-between"><dt className="text-ink-700">Shipping</dt><dd className="text-ink-900">{shipping > 0 ? formatPrice(shipping, code) : 'Free'}</dd></div>
               <div className="border-t border-line pt-2 mt-2 flex justify-between font-semibold">
                 <dt className="text-ink-900">Total</dt>
-                <dd className="text-ink-900">₹{Number(order.totalAmount).toLocaleString('en-IN')}</dd>
+                <dd className="text-ink-900">{formatPrice(order.totalAmount, code)}</dd>
               </div>
             </dl>
           </div>

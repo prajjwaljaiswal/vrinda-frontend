@@ -5,9 +5,11 @@ import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
 import { useWishlist, type WishlistItem } from '@/lib/wishlist';
 import { addToCartWithVendorGuard } from '@/lib/cart';
+import { useCurrency, formatPrice } from '@/lib/currency';
 
 export default function WishlistPage() {
   const router = useRouter();
+  const { code } = useCurrency();
   const hydrate = useWishlist((s) => s.hydrate);
   const remove = useWishlist((s) => s.remove);
   const items = useWishlist((s) => s.items);
@@ -79,7 +81,7 @@ export default function WishlistPage() {
                 <div className="p-3 flex-1 flex flex-col">
                   <Link href={`/products/${p.id}`} className="text-sm text-ink-900 line-clamp-2 hover:underline">{p.name}</Link>
                   <p className="text-xs text-ink-500 mt-0.5">{p.vendor.shopName}</p>
-                  <p className="font-display text-lg text-ink-900 mt-1">₹{p.price.toLocaleString('en-IN')}</p>
+                  <p className="font-display text-lg text-ink-900 mt-1">{formatPrice(p.price, code)}</p>
                   <div className="mt-3 flex gap-2">
                     <button
                       onClick={() => onMoveToCart(it)}

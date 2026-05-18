@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
 import { useVendor } from '@/lib/vendor-context';
+import { useCurrency, formatPrice } from '@/lib/currency';
 
 interface OrderItem {
   id: string;
@@ -29,6 +30,7 @@ interface Order {
 
 export default function VendorOrdersPage() {
   const router = useRouter();
+  const { code } = useCurrency();
   const { vendor, theme, storeKey } = useVendor();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
@@ -123,7 +125,7 @@ export default function VendorOrdersPage() {
                 </div>
                 <div>
                   <p className="text-ink-500 uppercase tracking-wide">From this shop</p>
-                  <p className="text-ink-900 font-medium">₹{o.itemSubtotal.toLocaleString('en-IN')}</p>
+                  <p className="text-ink-900 font-medium">{formatPrice(o.itemSubtotal, code)}</p>
                 </div>
                 <div className="hidden sm:block">
                   <p className="text-ink-500 uppercase tracking-wide">Order #</p>

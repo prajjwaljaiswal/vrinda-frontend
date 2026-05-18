@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
 import { api } from '@/lib/api';
+import { useCurrency, formatPrice } from '@/lib/currency';
 import { useCart, addToCartWithVendorGuard } from '@/lib/cart';
 import { Stars } from '@/components/storefront/ProductCard';
 import { WishlistButton } from '@/components/WishlistButton';
@@ -142,6 +143,7 @@ function RatingBar({ star, count, total }: { star: number; count: number; total:
 
 export default function ProductDetailPage({ params }: { params: { id: string } }) {
   const router = useRouter();
+  const { code } = useCurrency();
   const [product, setProduct] = useState<Product | null>(null);
   const [qty, setQty] = useState(1);
   const ctaRef = useRef<HTMLDivElement>(null);
@@ -397,13 +399,13 @@ export default function ProductDetailPage({ params }: { params: { id: string } }
 
           <div className="flex items-baseline gap-3 flex-wrap">
             {selectedCombo || !hasPriceRange ? (
-              <span className="text-3xl font-bold text-ink-900">₹{effectivePrice.toLocaleString('en-IN')}</span>
+              <span className="text-3xl font-bold text-ink-900">{formatPrice(effectivePrice, code)}</span>
             ) : (
               <>
                 <span className="text-3xl font-bold text-ink-900">
-                  ₹{minComboPrice.toLocaleString('en-IN')}
+                  {formatPrice(minComboPrice, code)}
                   <span className="text-ink-500 font-normal"> – </span>
-                  ₹{maxComboPrice.toLocaleString('en-IN')}
+                  {formatPrice(maxComboPrice, code)}
                 </span>
                 <span className="text-xs text-ink-500">price varies by option</span>
               </>
@@ -447,7 +449,7 @@ export default function ProductDetailPage({ params }: { params: { id: string } }
                           <span>{o.value}</span>
                           {optPrice != null && (
                             <span className="text-xs text-ink-500 font-normal">
-                              ₹{optPrice.toLocaleString('en-IN')}
+                              {formatPrice(optPrice, code)}
                             </span>
                           )}
                         </button>
@@ -789,7 +791,7 @@ export default function ProductDetailPage({ params }: { params: { id: string } }
           <div className="flex-1 min-w-0">
             <p className="text-[11px] uppercase tracking-wide text-ink-500">Price</p>
             <p className="font-bold text-ink-900 truncate">
-              ₹{effectivePrice.toLocaleString('en-IN')}
+              {formatPrice(effectivePrice, code)}
             </p>
           </div>
           <button onClick={() => addToCart(false)} disabled={!inStock} className="btn-secondary !py-2 !px-4 text-sm">Add</button>

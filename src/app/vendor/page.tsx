@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
 import { PageHeader, KpiCard, StatusPill, Card } from '@/components/dashboard/DashboardShell';
+import { useCurrency, formatPrice } from '@/lib/currency';
 
 interface Vendor { id: string; shopName: string; status: string; kycStatus?: string; kycRejectionNote?: string | null; }
 interface Product { id: string; name: string; price: string; stockQuantity: number; isActive: boolean; images: string[]; }
@@ -17,12 +18,10 @@ interface DashboardKpis {
   outOfStockCount: number;
 }
 
-function inr(n: number) {
-  return `₹${Math.round(n).toLocaleString('en-IN')}`;
-}
-
 export default function VendorDashboard() {
   const router = useRouter();
+  const { code } = useCurrency();
+  const inr = (n: number) => formatPrice(Math.round(n), code);
   const [vendor, setVendor] = useState<Vendor | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
   const [kpis, setKpis] = useState<DashboardKpis | null>(null);
@@ -147,7 +146,7 @@ export default function VendorDashboard() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
         <KpiCard
           label="Today's revenue"
-          value={kpis ? inr(kpis.todayRevenue) : '₹0'}
+          value={kpis ? inr(kpis.todayRevenue) : inr(0)}
           hint={kpis ? `${inr(kpis.last7Revenue)} this week` : 'Updates as orders are paid'}
         />
         <KpiCard
@@ -179,7 +178,7 @@ export default function VendorDashboard() {
             </div>
             <Link href="/vendor/analytics" className="text-sm font-semibold text-brand-700 hover:underline">More analytics →</Link>
           </div>
-          <Sparkline points={kpis.series.map((s) => s.revenue)} labels={kpis.series.map((s) => s.dateISO.slice(5))} />
+          <Sparkline points={kpis.series.map((s) => s.revenue)} labels={kpis.series.map((s) => s.dateISO.slice(5))} fmt={inr} />
         </Card>
       )}
 
@@ -220,7 +219,7 @@ export default function VendorDashboard() {
                         <span className="font-medium text-ink-900 line-clamp-1">{p.name}</span>
                       </div>
                     </td>
-                    <td className="px-5 py-3 font-semibold">₹{Number(p.price).toLocaleString('en-IN')}</td>
+                    <td className="px-5 py-3 font-semibold">{formatPrice(p.price, code)}</td>
                     <td className="px-5 py-3">
                       <span className={p.stockQuantity === 0 ? 'text-danger' : p.stockQuantity <= 3 ? 'text-warn' : 'text-ink-700'}>
                         {p.stockQuantity}
@@ -260,14 +259,14 @@ export default function VendorDashboard() {
   );
 }
 
-function Sparkline({ points, labels }: { points: number[]; labels: string[] }) {
+function Sparkline({ points, labels, fmt }: { points: number[]; labels: string[]; fmt: (n: number) => string }) {
   const max = Math.max(1, ...points);
   return (
     <div className="flex items-end gap-2 h-24">
       {points.map((v, i) => {
         const h = max > 0 ? Math.max(2, (v / max) * 100) : 2;
         return (
-          <div key={i} className="flex-1 flex flex-col items-center gap-1.5" title={`${labels[i]}: ₹${Math.round(v).toLocaleString('en-IN')}`}>
+          <div key={i} className="flex-1 flex flex-col items-center gap-1.5" title={`${labels[i]}: ${fmt(v)}`}>
             <span className="block w-full rounded-t bg-brand-600" style={{ height: `${h}%` }} />
             <span className="text-[10px] text-ink-500 font-mono">{labels[i]}</span>
           </div>

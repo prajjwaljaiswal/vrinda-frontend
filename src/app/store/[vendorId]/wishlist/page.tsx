@@ -6,10 +6,12 @@ import toast from 'react-hot-toast';
 import { useWishlist, type WishlistItem } from '@/lib/wishlist';
 import { useVendor } from '@/lib/vendor-context';
 import { addToCartWithVendorGuard } from '@/lib/cart';
+import { useCurrency, formatPrice } from '@/lib/currency';
 
 export default function VendorWishlistPage() {
   const { vendorId } = useParams<{ vendorId: string }>();
   const router = useRouter();
+  const { code } = useCurrency();
   const { vendor, storeKey } = useVendor();
   const hydrate = useWishlist((s) => s.hydrate);
   const remove = useWishlist((s) => s.remove);
@@ -89,7 +91,7 @@ export default function VendorWishlistPage() {
                 <div className="p-3 flex-1 flex flex-col">
                   <Link href={`/store/${storeKey}/products/${(p as any).slug || p.id}`} className="text-sm line-clamp-2 hover:underline">{p.name}</Link>
                   <p className="text-xs text-ink-500 mt-0.5">{p.vendor.shopName}</p>
-                  <p className="font-display text-lg mt-1">₹{p.price.toLocaleString('en-IN')}</p>
+                  <p className="font-display text-lg mt-1">{formatPrice(p.price, code)}</p>
                   <div className="mt-3 flex gap-2">
                     <button onClick={() => onMoveToCart(it)} disabled={unavailable} className="btn-primary flex-1 !py-2 !text-xs disabled:opacity-50">Move to cart</button>
                     <button onClick={() => remove(p.id)} aria-label="Remove" className="w-9 h-9 flex items-center justify-center rounded-md border border-line hover:text-danger hover:border-danger">

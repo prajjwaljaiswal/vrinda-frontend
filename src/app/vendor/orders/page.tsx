@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
 import { api } from '@/lib/api';
 import { PageHeader, Card, StatusPill } from '@/components/dashboard/DashboardShell';
+import { useCurrency, formatPrice } from '@/lib/currency';
 
 interface OrderItem {
   id: string;
@@ -53,6 +54,7 @@ function statusLabel(s: string) {
 }
 
 export default function VendorOrdersPage() {
+  const { code } = useCurrency();
   const [items, setItems]     = useState<OrderItem[]>([]);
   const [tab, setTab]         = useState<typeof TABS[number]['id']>('TO_SHIP');
   const [loading, setLoading] = useState(true);
@@ -189,7 +191,7 @@ export default function VendorOrdersPage() {
                       )}
                     </div>
                     <p className="text-sm text-ink-700">
-                      Qty {it.quantity} · ₹{Number(it.priceAtPurchase).toLocaleString('en-IN')}
+                      Qty {it.quantity} · {formatPrice(it.priceAtPurchase, code)}
                     </p>
                     <p className="text-xs text-ink-500 mt-1">
                       {it.order.customer.name} · {it.order.customer.phone || it.order.customer.email}
@@ -256,10 +258,10 @@ export default function VendorOrdersPage() {
                       Qty: {selected.quantity}
                     </p>
                     <p className="text-sm text-ink-700">
-                      Unit price: ₹{Number(selected.priceAtPurchase).toLocaleString('en-IN')}
+                      Unit price: {formatPrice(selected.priceAtPurchase, code)}
                     </p>
                     <p className="text-sm font-semibold text-ink-900 mt-1">
-                      Subtotal: ₹{(Number(selected.priceAtPurchase) * selected.quantity).toLocaleString('en-IN')}
+                      Subtotal: {formatPrice(Number(selected.priceAtPurchase) * selected.quantity, code)}
                     </p>
                   </div>
                 </div>
@@ -300,7 +302,7 @@ export default function VendorOrdersPage() {
                     <p className="text-sm text-ink-500">No shipping method attached.</p>
                   )}
                   {selected.shippingCost != null && Number(selected.shippingCost) > 0 && (
-                    <DetailRow label="Charged" value={`₹${Number(selected.shippingCost).toLocaleString('en-IN')}`} />
+                    <DetailRow label="Charged" value={formatPrice(selected.shippingCost, code)} />
                   )}
                   {selected.trackingNumber && (
                     <DetailRow label="AWB" value={selected.trackingNumber} />

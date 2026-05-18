@@ -15,6 +15,7 @@
 
 import { useState } from 'react';
 import { useCheckoutBlock, CheckoutFallback } from './CheckoutContext';
+import { useCurrency, formatPrice } from '@/lib/currency';
 
 // ── Required blocks: rendered by the legacy core ────────────────────────────
 export function CheckoutStepsRenderer() { return null; }
@@ -69,6 +70,7 @@ export function CheckoutTrustStripRenderer({ settings }: { settings: any; ctx: a
 
 // ── Gift wrap upsell ────────────────────────────────────────────────────────
 export function CheckoutGiftWrapRenderer({ settings }: { settings: any; ctx: any }) {
+  const { code } = useCurrency();
   const co = useCheckoutBlock();
   if (!co) return <CheckoutFallback label="Gift wrap upsell" hint="Adds an optional gift-wrap toggle." />;
   return (
@@ -87,7 +89,7 @@ export function CheckoutGiftWrapRenderer({ settings }: { settings: any; ctx: any
           {settings?.heading || 'Add a gift wrap'}
           {settings?.price > 0 && (
             <span className="ml-2 text-sm text-ink-500 font-normal">
-              + ₹{Number(settings.price).toLocaleString('en-IN')}
+              + {formatPrice(Number(settings.price), code)}
             </span>
           )}
         </div>

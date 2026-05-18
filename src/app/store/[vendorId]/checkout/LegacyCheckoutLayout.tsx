@@ -6,6 +6,7 @@ import toast from 'react-hot-toast';
 import { useCart } from '@/lib/cart';
 import { api } from '@/lib/api';
 import { useVendor } from '@/lib/vendor-context';
+import { useCurrency, formatPrice } from '@/lib/currency';
 import { addressApi, type Address } from '@/lib/addresses';
 import { CheckoutStep } from '@/components/checkout/CheckoutStep';
 
@@ -67,6 +68,7 @@ function methodSubtitle(m: VendorPaymentMethod): string {
 
 export function LegacyVendorCheckoutPage() {
   const router = useRouter();
+  const { code } = useCurrency();
   const { vendor, theme, storeKey } = useVendor();
   const { items, setQty, remove, clear } = useCart();
   const [addr, setAddr] = useState({ name: '', line1: '', line2: '', city: '', state: '', pincode: '', phone: '' });
@@ -561,10 +563,10 @@ export function LegacyVendorCheckoutPage() {
                     </div>
                   </div>
                   <div className="text-right shrink-0">
-                    <p className="font-bold text-ink-900">₹{(i.price * i.quantity).toLocaleString('en-IN')}</p>
+                    <p className="font-bold text-ink-900">{formatPrice(i.price * i.quantity, code)}</p>
                     {i.quantity > 1 && (
                       <p className="text-xs text-ink-500 mt-0.5">
-                        ₹{i.price.toLocaleString('en-IN')} × {i.quantity}
+                        {formatPrice(i.price, code)} × {i.quantity}
                       </p>
                     )}
                   </div>
@@ -702,7 +704,7 @@ export function LegacyVendorCheckoutPage() {
                     const s = shipSel[g.vendorId];
                     return s && opt.methodId === s.methodId && opt.serviceCode === s.serviceCode;
                   });
-                  return o ? `${o.name} · ${o.etaMinDays}–${o.etaMaxDays} days · ${o.amount === 0 ? 'Free' : `₹${o.amount}`}` : '';
+                  return o ? `${o.name} · ${o.etaMinDays}–${o.etaMaxDays} days · ${o.amount === 0 ? 'Free' : formatPrice(o.amount, code)}` : '';
                 }).filter(Boolean).join(' · ')
               : addressComplete ? 'Pick a delivery option' : 'Complete address first'
             }
@@ -760,7 +762,7 @@ export function LegacyVendorCheckoutPage() {
                                 </p>
                               </div>
                               <p className="text-sm font-semibold text-ink-900">
-                                {o.amount === 0 ? <span style={{ color: '#059669' }}>Free</span> : `₹${o.amount.toLocaleString('en-IN')}`}
+                                {o.amount === 0 ? <span style={{ color: '#059669' }}>Free</span> : formatPrice(o.amount, code)}
                               </p>
                             </label>
                           );
@@ -813,7 +815,7 @@ export function LegacyVendorCheckoutPage() {
             <div className="pt-5 mt-5 border-t border-line flex justify-between gap-3">
               <button onClick={() => setCurrentStep(1)} className="btn-secondary !px-5">Back</button>
               <button onClick={handlePlace} disabled={loading || !selectedMethod} className="btn-primary !px-6">
-                {loading ? 'Processing…' : `Pay ₹${grand.toLocaleString('en-IN')}`}
+                {loading ? 'Processing…' : `Pay ${formatPrice(grand, code)}`}
               </button>
             </div>
           </CheckoutStep>
@@ -840,15 +842,15 @@ export function LegacyVendorCheckoutPage() {
                             <span className="text-sm font-bold font-mono" style={{ color: theme }}>{c.code}</span>
                             <span className="text-xs text-ink-700">
                               {c.discountType === 'PERCENT'
-                                ? `${Number(c.value)}% off${c.maxDiscount ? ` (up to ₹${Number(c.maxDiscount)})` : ''}`
-                                : `₹${Number(c.value)} off`}
+                                ? `${Number(c.value)}% off${c.maxDiscount ? ` (up to ${formatPrice(Number(c.maxDiscount), code)})` : ''}`
+                                : `${formatPrice(Number(c.value), code)} off`}
                             </span>
                           </div>
                           <p className="text-[11px] text-ink-500 mt-0.5">
                             {c.scope === 'PRODUCT'
                               ? `On ${c.products.length} selected product${c.products.length === 1 ? '' : 's'}`
                               : 'On all items in this shop'}
-                            {c.minOrderAmount ? ` · Min order ₹${Number(c.minOrderAmount).toLocaleString('en-IN')}` : ''}
+                            {c.minOrderAmount ? ` · Min order ${formatPrice(Number(c.minOrderAmount), code)}` : ''}
                             {c.expiresAt ? ` · Expires ${new Date(c.expiresAt).toLocaleDateString()}` : ''}
                           </p>
                         </div>
@@ -870,7 +872,7 @@ export function LegacyVendorCheckoutPage() {
                 <div className="flex items-center justify-between p-3 rounded-md border" style={{ borderColor: `${theme}40`, background: `${theme}10` }}>
                   <div>
                     <p className="text-sm font-semibold font-mono" style={{ color: theme }}>{coupon.code}</p>
-                    <p className="text-xs text-ink-700">Discount applied: ₹{coupon.discount.toLocaleString('en-IN')}</p>
+                    <p className="text-xs text-ink-700">Discount applied: {formatPrice(coupon.discount, code)}</p>
                   </div>
                   <button onClick={removeCoupon} className="text-xs hover:underline" style={{ color: '#dc2626' }}>Remove</button>
                 </div>
@@ -906,7 +908,7 @@ export function LegacyVendorCheckoutPage() {
               <h2 className="font-semibold text-ink-900">Order summary</h2>
             </div>
             <div className="p-5 space-y-3">
-              <Row label="Subtotal" value={`₹${subtotal.toLocaleString('en-IN')}`} />
+              <Row label="Subtotal" value={formatPrice(subtotal, code)} />
               <Row
                 label="Shipping"
                 value={
@@ -916,7 +918,7 @@ export function LegacyVendorCheckoutPage() {
                       ? 'Enter pincode'
                       : shipping === 0 && allVendorsCovered
                         ? 'Free'
-                        : `₹${shipping.toLocaleString('en-IN')}`
+                        : formatPrice(shipping, code)
                 }
                 valueColor={shipping === 0 && allVendorsCovered ? '#059669' : undefined}
               />
@@ -929,14 +931,14 @@ export function LegacyVendorCheckoutPage() {
                       <button onClick={removeCoupon} className="hover:opacity-70" aria-label="Remove coupon">×</button>
                     </span>
                   </span>
-                  <span className="font-medium" style={{ color: '#059669' }}>−₹{discount.toLocaleString('en-IN')}</span>
+                  <span className="font-medium" style={{ color: '#059669' }}>−{formatPrice(discount, code)}</span>
                 </div>
               )}
               <Row label="Estimated taxes" value="Included" muted />
               <div className="border-t border-line pt-3 flex items-baseline justify-between">
                 <span className="text-sm font-semibold text-ink-900">Total</span>
                 <div className="text-right">
-                  <p className="text-2xl font-bold text-ink-900">₹{grand.toLocaleString('en-IN')}</p>
+                  <p className="text-2xl font-bold text-ink-900">{formatPrice(grand, code)}</p>
                   <p className="text-xs text-ink-500">incl. of all taxes</p>
                 </div>
               </div>
@@ -954,8 +956,8 @@ export function LegacyVendorCheckoutPage() {
                 {loading
                   ? 'Processing…'
                   : selectedMethod?.provider === 'RAZORPAY'
-                    ? `Pay ₹${grand.toLocaleString('en-IN')}`
-                    : `Place order · ₹${grand.toLocaleString('en-IN')}`}
+                    ? `Pay ${formatPrice(grand, code)}`
+                    : `Place order · ${formatPrice(grand, code)}`}
               </button>
 
               <p className="text-[11px] text-ink-500 text-center pt-1">
@@ -993,7 +995,7 @@ export function LegacyVendorCheckoutPage() {
                 <>
                   <Row label="Pay to UPI" value={paymentInstructions.data.vpa} />
                   <Row label="Name" value={paymentInstructions.data.displayName} />
-                  <Row label="Amount" value={`₹${grand.toLocaleString('en-IN')}`} />
+                  <Row label="Amount" value={formatPrice(grand, code)} />
                   <Row label="Reference" value={paymentInstructions.orderId.slice(0, 8).toUpperCase()} />
                 </>
               )}
@@ -1003,7 +1005,7 @@ export function LegacyVendorCheckoutPage() {
                   {paymentInstructions.data.bankName && <Row label="Bank" value={paymentInstructions.data.bankName} />}
                   {paymentInstructions.data.ifsc && <Row label="IFSC" value={paymentInstructions.data.ifsc} />}
                   <Row label="Account ending" value={`••${paymentInstructions.data.accountLast4}`} />
-                  <Row label="Amount" value={`₹${grand.toLocaleString('en-IN')}`} />
+                  <Row label="Amount" value={formatPrice(grand, code)} />
                   <Row label="Reference" value={paymentInstructions.orderId.slice(0, 8).toUpperCase()} />
                 </>
               )}

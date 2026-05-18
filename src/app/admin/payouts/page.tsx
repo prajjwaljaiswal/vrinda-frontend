@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import { api } from '@/lib/api';
 import { PageHeader, KpiCard, Card } from '@/components/dashboard/DashboardShell';
+import { useCurrency, formatPrice } from '@/lib/currency';
 
 interface PayoutRow {
   vendorId: string;
@@ -15,6 +16,8 @@ interface PayoutRow {
 
 export default function AdminPayoutsPage() {
   const [data, setData] = useState<{ commissionRate: number; vendors: PayoutRow[] } | null>(null);
+  const { code } = useCurrency();
+  const fmt = (n: number) => formatPrice(n, code);
 
   useEffect(() => {
     api<{ commissionRate: number; vendors: PayoutRow[] }>('/api/admin/payouts').then(setData);
@@ -43,9 +46,9 @@ export default function AdminPayoutsPage() {
       />
 
       <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-6">
-        <KpiCard label="Gross sales" value={`₹${totalGross.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`} />
-        <KpiCard label="Platform commission" value={`₹${totalCommission.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`} accent="brand" />
-        <KpiCard label="Total payable" value={`₹${totalPayable.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`} accent="success" />
+        <KpiCard label="Gross sales" value={fmt(totalGross)} />
+        <KpiCard label="Platform commission" value={fmt(totalCommission)} accent="brand" />
+        <KpiCard label="Total payable" value={fmt(totalPayable)} accent="success" />
       </div>
 
       <Card className="overflow-hidden">
@@ -73,9 +76,9 @@ export default function AdminPayoutsPage() {
                     <p className="text-xs text-ink-500">{v.email}</p>
                   </td>
                   <td className="px-5 py-3 text-ink-700">{v.itemCount}</td>
-                  <td className="px-5 py-3 text-right">₹{v.gross.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</td>
-                  <td className="px-5 py-3 text-right text-ink-500">−₹{v.commission.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</td>
-                  <td className="px-5 py-3 text-right font-bold text-ink-900">₹{v.payable.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</td>
+                  <td className="px-5 py-3 text-right">{fmt(v.gross)}</td>
+                  <td className="px-5 py-3 text-right text-ink-500">−{fmt(v.commission)}</td>
+                  <td className="px-5 py-3 text-right font-bold text-ink-900">{fmt(v.payable)}</td>
                   <td className="px-5 py-3 text-right">
                     <button className="text-xs text-brand-700 font-semibold hover:underline">Mark paid</button>
                   </td>

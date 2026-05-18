@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { api } from '@/lib/api';
 import { PageHeader, Card, KpiCard, StatusPill } from '@/components/dashboard/DashboardShell';
+import { useCurrency, formatPrice } from '@/lib/currency';
 
 interface PayoutItem {
   orderItemId: string;
@@ -27,13 +28,11 @@ interface Payouts {
   items: PayoutItem[];
 }
 
-function inr(n: number) {
-  return `₹${Math.round(n).toLocaleString('en-IN')}`;
-}
-
 export default function VendorPayoutsPage() {
   const [data, setData] = useState<Payouts | null>(null);
   const [loading, setLoading] = useState(true);
+  const { code } = useCurrency();
+  const fmt = (n: number) => formatPrice(Math.round(n), code);
 
   useEffect(() => {
     api<Payouts>('/api/vendors/me/payouts')
@@ -75,20 +74,20 @@ export default function VendorPayoutsPage() {
       <div className="grid md:grid-cols-3 gap-4 mb-8">
         <KpiCard
           label="Payable now"
-          value={inr(data.payable)}
+          value={fmt(data.payable)}
           hint="Delivered orders, ready for next payout"
           accent="success"
         />
         <KpiCard
           label="In pipeline"
-          value={inr(data.pipeline)}
+          value={fmt(data.pipeline)}
           hint="Orders paid or shipped — pays out once delivered"
           accent="warn"
         />
         <KpiCard
           label="Lifetime payout"
-          value={inr(data.lifetimePayout)}
-          hint={`${inr(data.lifetimeGross)} gross · ${inr(data.lifetimeCommission)} commission`}
+          value={fmt(data.lifetimePayout)}
+          hint={`${fmt(data.lifetimeGross)} gross · ${fmt(data.lifetimeCommission)} commission`}
           accent="brand"
         />
       </div>
@@ -152,9 +151,9 @@ export default function VendorPayoutsPage() {
                       </div>
                     </td>
                     <td className="px-5 py-3">{it.quantity}</td>
-                    <td className="px-5 py-3 text-right font-mono">{inr(it.gross)}</td>
-                    <td className="px-5 py-3 text-right font-mono text-ink-500">−{inr(it.commission)}</td>
-                    <td className="px-5 py-3 text-right font-semibold font-mono">{inr(it.payout)}</td>
+                    <td className="px-5 py-3 text-right font-mono">{fmt(it.gross)}</td>
+                    <td className="px-5 py-3 text-right font-mono text-ink-500">−{fmt(it.commission)}</td>
+                    <td className="px-5 py-3 text-right font-semibold font-mono">{fmt(it.payout)}</td>
                     <td className="px-5 py-3">
                       <StatusPill tone={it.status === 'DELIVERED' ? 'success' : it.status === 'SHIPPED' ? 'info' : 'warn'}>
                         {it.status}

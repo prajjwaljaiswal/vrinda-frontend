@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import { api } from '@/lib/api';
 import { PageHeader, Card } from '@/components/dashboard/DashboardShell';
+import { useCurrency, CURRENCIES } from '@/lib/currency';
 
 type Mode = 'TEST' | 'LIVE';
 
@@ -436,6 +437,8 @@ const EMPTY_METHOD = {
 };
 
 function MethodsTab() {
+  const { code } = useCurrency();
+  const currencySymbol = CURRENCIES[code].symbol;
   const [methods, setMethods] = useState<ShippingMethod[]>([]);
   const [accounts, setAccounts] = useState<CarrierAccount[]>([]);
   const [loading, setLoading] = useState(true);
@@ -494,7 +497,7 @@ function MethodsTab() {
                   </div>
                   <div className="text-xs text-ink-500">
                     {m.carrier} · {m.rateMode === 'FLAT'
-                      ? `Flat ₹${Number(m.baseRate).toFixed(2)}${m.perItemRate ? ` + ₹${Number(m.perItemRate).toFixed(2)}/item` : ''}${m.freeAbove ? ` · free above ₹${Number(m.freeAbove).toFixed(2)}` : ''}`
+                      ? `Flat ${currencySymbol}${Number(m.baseRate).toFixed(2)}${m.perItemRate ? ` + ${currencySymbol}${Number(m.perItemRate).toFixed(2)}/item` : ''}${m.freeAbove ? ` · free above ${currencySymbol}${Number(m.freeAbove).toFixed(2)}` : ''}`
                       : 'Live rates'}
                     {' · '}{m.etaMinDays}–{m.etaMaxDays} days
                     {m.zones?.length > 0 && !m.zones.includes('*') ? ` · ${m.zones.length} zone(s)` : ''}
@@ -531,6 +534,8 @@ function MethodModal({
   onClose: () => void;
   onSaved: () => Promise<void>;
 }) {
+  const { code } = useCurrency();
+  const currencySymbol = CURRENCIES[code].symbol;
   const isEdit = !!method;
   const [form, setForm] = useState({
     name: method?.name ?? '',
@@ -639,13 +644,13 @@ function MethodModal({
                 <input className="input" value={form.carrier} onChange={(e) => setForm({ ...form, carrier: e.target.value.toUpperCase() })} placeholder="CUSTOM, FEDEX, INDIA_POST…" />
               </Field>
               <div className="grid grid-cols-3 gap-4">
-                <Field label="Base rate (₹)" required>
+                <Field label={`Base rate (${currencySymbol})`} required>
                   <input className="input" type="number" step="0.01" min="0" value={form.baseRate} onChange={(e) => setForm({ ...form, baseRate: Number(e.target.value) })} required />
                 </Field>
-                <Field label="Per item add-on (₹)">
+                <Field label={`Per item add-on (${currencySymbol})`}>
                   <input className="input" type="number" step="0.01" min="0" value={form.perItemRate} onChange={(e) => setForm({ ...form, perItemRate: e.target.value === '' ? '' : Number(e.target.value) })} placeholder="optional" />
                 </Field>
-                <Field label="Free above (₹)">
+                <Field label={`Free above (${currencySymbol})`}>
                   <input className="input" type="number" step="0.01" min="0" value={form.freeAbove} onChange={(e) => setForm({ ...form, freeAbove: e.target.value === '' ? '' : Number(e.target.value) })} placeholder="optional" />
                 </Field>
               </div>

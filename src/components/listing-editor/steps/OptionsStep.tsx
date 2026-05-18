@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useMemo, useState } from 'react';
 import { StepHeader, StepProps, Field } from '../StepShell';
+import { useCurrency, CURRENCIES } from '@/lib/currency';
 import { DraftCombo, DraftVariation } from '../types';
 
 const MAX_TAGS = 13;
@@ -23,6 +24,8 @@ function cartesian(vars: DraftVariation[]): string[][] {
 }
 
 export function OptionsStep({ draft, setDraft }: StepProps) {
+  const { code } = useCurrency();
+  const currencySymbol = CURRENCIES[code].symbol;
   const [tagInput, setTagInput] = useState('');
 
   function addTag() {
@@ -186,7 +189,7 @@ export function OptionsStep({ draft, setDraft }: StepProps) {
                   <thead className="bg-canvas">
                     <tr className="text-[11px] uppercase tracking-wide text-ink-500">
                       <th className="text-left px-3 py-2 font-semibold">Combination</th>
-                      <th className="text-left px-3 py-2 font-semibold w-32">Price (₹)</th>
+                      <th className="text-left px-3 py-2 font-semibold w-32">Price ({currencySymbol})</th>
                       <th className="text-left px-3 py-2 font-semibold w-24">Stock</th>
                       <th className="text-left px-3 py-2 font-semibold w-32">SKU</th>
                     </tr>

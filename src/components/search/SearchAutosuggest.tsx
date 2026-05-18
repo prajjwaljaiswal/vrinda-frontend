@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { algoliasearch, type SearchClient } from 'algoliasearch';
+import { useCurrency, formatPrice } from '@/lib/currency';
 
 const APP_ID = process.env.NEXT_PUBLIC_ALGOLIA_APP_ID || '';
 const SEARCH_KEY = process.env.NEXT_PUBLIC_ALGOLIA_SEARCH_KEY || '';
@@ -42,6 +43,7 @@ interface Props {
 }
 
 export function SearchAutosuggest({ className, vendorId, placeholder }: Props) {
+  const { code } = useCurrency();
   const router = useRouter();
   const enabled = !!APP_ID && !!SEARCH_KEY;
   const client: SearchClient | null = useMemo(
@@ -164,7 +166,7 @@ export function SearchAutosuggest({ className, vendorId, placeholder }: Props) {
                           <p className="text-sm text-ink-900 truncate">{h.name}</p>
                           <p className="text-xs text-ink-500">{h.vendorName}</p>
                         </div>
-                        <span className="text-sm font-semibold text-ink-900">₹{h.price.toLocaleString('en-IN')}</span>
+                        <span className="text-sm font-semibold text-ink-900">{formatPrice(h.price, code)}</span>
                       </Link>
                     </li>
                   ))}

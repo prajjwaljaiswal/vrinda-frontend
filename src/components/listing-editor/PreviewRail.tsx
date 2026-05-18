@@ -1,8 +1,10 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { ListingDraft } from './types';
+import { useCurrency, formatPrice } from '@/lib/currency';
 
 export function PreviewRail({ draft }: { draft: ListingDraft }) {
+  const { code } = useCurrency();
   const cover = draft.files[0];
   const [coverUrl, setCoverUrl] = useState<string | null>(null);
 
@@ -39,7 +41,7 @@ export function PreviewRail({ draft }: { draft: ListingDraft }) {
           {draft.title || <span className="text-ink-400">Your listing title</span>}
         </p>
         <p className="text-base font-bold text-ink-900 mt-1">
-          {draft.price ? `₹${Number(draft.price).toLocaleString('en-IN')}` : <span className="text-ink-400 font-normal">₹—</span>}
+          {draft.price ? formatPrice(Number(draft.price), code) : <span className="text-ink-400 font-normal">—</span>}
         </p>
         {(() => {
           const badges: string[] = [];

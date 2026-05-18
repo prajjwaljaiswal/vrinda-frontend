@@ -18,6 +18,7 @@ const NAV: NavItem[] = [
   { label: 'Payouts', href: '/vendor/payouts', icon: Icons.Wallet, match: (p) => p.startsWith('/vendor/payouts') },
   { label: 'Payment methods', href: '/vendor/payments', icon: Icons.Wallet, match: (p) => p.startsWith('/vendor/payments') },
   { label: 'Shipping', href: '/vendor/shipping', icon: Icons.Box, match: (p) => p.startsWith('/vendor/shipping') },
+  { label: 'Settings', href: '/vendor/settings', icon: Icons.Settings, match: (p) => p.startsWith('/vendor/settings') },
 ];
 
 export default function VendorLayout({ children }: { children: React.ReactNode }) {

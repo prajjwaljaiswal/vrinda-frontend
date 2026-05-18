@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
+import { useCurrency, formatPrice } from '@/lib/currency';
 
 interface OrderItem {
   id: string;
@@ -46,6 +47,7 @@ function StatusPill({ status }: { status: string }) {
 
 export default function OrdersPage() {
   const router = useRouter();
+  const { code } = useCurrency();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -106,7 +108,7 @@ export default function OrdersPage() {
                 </div>
                 <div>
                   <p className="text-ink-500 uppercase tracking-wide">Total</p>
-                  <p className="text-ink-900 font-medium">₹{Number(o.totalAmount).toLocaleString('en-IN')}</p>
+                  <p className="text-ink-900 font-medium">{formatPrice(o.totalAmount, code)}</p>
                 </div>
                 <div className="hidden sm:block">
                   <p className="text-ink-500 uppercase tracking-wide">Order #</p>
@@ -136,7 +138,7 @@ export default function OrdersPage() {
                   <p className="text-xs text-ink-500 mt-0.5">
                     {itemCount} item{itemCount === 1 ? '' : 's'} · from {o.items[0].vendor.shopName}
                     {o.shippingTotal && Number(o.shippingTotal) > 0 && (
-                      <> · incl. ₹{Number(o.shippingTotal).toLocaleString('en-IN')} shipping</>
+                      <> · incl. {formatPrice(o.shippingTotal, code)} shipping</>
                     )}
                   </p>
                 </div>

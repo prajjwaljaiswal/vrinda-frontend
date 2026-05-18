@@ -4,11 +4,13 @@ import Link from 'next/link';
 import toast from 'react-hot-toast';
 import { api } from '@/lib/api';
 import { PageHeader, KpiCard, StatusPill, Card } from '@/components/dashboard/DashboardShell';
+import { useCurrency, formatPrice } from '@/lib/currency';
 
 interface Vendor { id: string; shopName: string; status: string; createdAt: string; user: { name: string; email: string }; }
 interface PayoutRow { vendorId: string; shopName: string; payable: number; }
 
 export default function AdminOverview() {
+  const { code } = useCurrency();
   const [pending, setPending] = useState<Vendor[]>([]);
   const [approved, setApproved] = useState<Vendor[]>([]);
   const [payouts, setPayouts] = useState<PayoutRow[]>([]);
@@ -51,8 +53,8 @@ export default function AdminOverview() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
             <KpiCard label="Pending approvals" value={pending.length} hint="Vendors awaiting review" accent="warn" />
             <KpiCard label="Active vendors" value={approved.length} hint="Approved shops" accent="success" />
-            <KpiCard label="Payouts due" value={`₹${totalPayable.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`} hint={`${payouts.length} vendors`} accent="brand" />
-            <KpiCard label="GMV (30d)" value="₹—" hint="Wire up analytics" />
+            <KpiCard label="Payouts due" value={formatPrice(totalPayable, code)} hint={`${payouts.length} vendors`} accent="brand" />
+            <KpiCard label="GMV (30d)" value="—" hint="Wire up analytics" />
           </div>
 
           <div className="grid lg:grid-cols-3 gap-6">
@@ -99,7 +101,7 @@ export default function AdminOverview() {
                     <li key={p.vendorId} className="px-5 py-3 flex items-center justify-between gap-3">
                       <span className="text-sm text-ink-900 truncate">{p.shopName}</span>
                       <span className="text-sm font-semibold text-ink-900 shrink-0">
-                        ₹{p.payable.toLocaleString('en-IN', { maximumFractionDigits: 0 })}
+                        {formatPrice(p.payable, code)}
                       </span>
                     </li>
                   ))}

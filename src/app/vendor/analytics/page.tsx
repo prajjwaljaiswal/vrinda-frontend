@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { api } from '@/lib/api';
 import { PageHeader, Card, KpiCard } from '@/components/dashboard/DashboardShell';
+import { useCurrency, formatPrice } from '@/lib/currency';
 
 interface Analytics {
   days: number;
@@ -14,10 +15,6 @@ interface Analytics {
   topProducts: { id: string; name: string; image: string | null; revenue: number; units: number }[];
 }
 
-function inr(n: number) {
-  return `₹${Math.round(n).toLocaleString('en-IN')}`;
-}
-
 const RANGES = [
   { days: 7,  label: '7d' },
   { days: 30, label: '30d' },
@@ -25,6 +22,8 @@ const RANGES = [
 ] as const;
 
 export default function VendorAnalyticsPage() {
+  const { code } = useCurrency();
+  const fmt = (n: number) => formatPrice(Math.round(n), code);
   const [days, setDays] = useState<7 | 30 | 90>(30);
   const [data, setData] = useState<Analytics | null>(null);
   const [loading, setLoading] = useState(true);
@@ -63,10 +62,10 @@ export default function VendorAnalyticsPage() {
       ) : (
         <>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-            <KpiCard label="Revenue" value={inr(data.totalRevenue)} hint={`${data.days} days`} />
+            <KpiCard label="Revenue" value={fmt(data.totalRevenue)} hint={`${data.days} days`} />
             <KpiCard label="Orders" value={data.totalOrders} hint={`${data.totalUnits} units sold`} accent="brand" />
-            <KpiCard label="Avg order value" value={inr(data.avgOrderValue)} hint="Per order" accent="success" />
-            <KpiCard label="Daily average" value={inr(data.totalRevenue / data.days)} hint="Mean per day" accent="warn" />
+            <KpiCard label="Avg order value" value={fmt(data.avgOrderValue)} hint="Per order" accent="success" />
+            <KpiCard label="Daily average" value={fmt(data.totalRevenue / data.days)} hint="Mean per day" accent="warn" />
           </div>
 
           <Card className="p-5 mb-8">
@@ -110,7 +109,7 @@ export default function VendorAnalyticsPage() {
                         </div>
                       </td>
                       <td className="px-5 py-3 text-right font-mono">{p.units}</td>
-                      <td className="px-5 py-3 text-right font-semibold font-mono">{inr(p.revenue)}</td>
+                      <td className="px-5 py-3 text-right font-semibold font-mono">{fmt(p.revenue)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -124,6 +123,8 @@ export default function VendorAnalyticsPage() {
 }
 
 function RevenueChart({ series }: { series: Analytics['series'] }) {
+    const { code } = useCurrency();
+  const fmt = (n: number) => formatPrice(Math.round(n), code);
   const max = Math.max(1, ...series.map((s) => s.revenue));
   // Cap visible x-axis labels so the chart stays readable for 30/90-day ranges.
   const labelEvery = series.length > 30 ? 7 : series.length > 14 ? 3 : 1;
@@ -135,7 +136,7 @@ function RevenueChart({ series }: { series: Analytics['series'] }) {
         return (
           <div key={s.dateISO} className="flex-1 flex flex-col items-center justify-end gap-1.5 group">
             <span className="text-[10px] text-ink-500 opacity-0 group-hover:opacity-100 transition font-mono whitespace-nowrap -mb-1">
-              ₹{Math.round(s.revenue).toLocaleString('en-IN')}
+              {fmt(s.revenue)}
             </span>
             <span className="block w-full rounded-t bg-brand-600 hover:bg-brand-700 transition" style={{ height: `${h}%` }} />
             <span className="text-[10px] text-ink-500 font-mono" style={{ visibility: showLabel ? 'visible' : 'hidden' }}>

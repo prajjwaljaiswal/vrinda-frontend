@@ -1,6 +1,7 @@
 'use client';
 import Link from 'next/link';
 import { WishlistButton } from '@/components/WishlistButton';
+import { useCurrency, formatPrice } from '@/lib/currency';
 
 export interface ProductCardData {
   id: string;
@@ -16,11 +17,8 @@ export interface ProductCardData {
   variationCombos?: { price: string | number | null }[];
 }
 
-function formatINR(v: string | number) {
-  return `₹${Number(v).toLocaleString('en-IN')}`;
-}
-
 export function ProductCard({ product }: { product: ProductCardData }) {
+  const { code } = useCurrency();
   const rating = product.rating ?? 0;
   const reviews = product.reviewCount ?? 0;
   const hasMrp = product.mrp && Number(product.mrp) > Number(product.price);
@@ -71,10 +69,10 @@ export function ProductCard({ product }: { product: ProductCardData }) {
         </div>
         <div className="mt-1 flex items-baseline gap-2">
           <span className="text-base font-bold text-ink-900">
-            {formatINR(displayPrice)}{hasVariationRange && '+'}
+            {formatPrice(displayPrice, code)}{hasVariationRange && '+'}
           </span>
           {hasMrp && (
-            <span className="text-xs text-ink-500 line-through">{formatINR(product.mrp!)}</span>
+            <span className="text-xs text-ink-500 line-through">{formatPrice(product.mrp!, code)}</span>
           )}
         </div>
         {product.freeShipping && (
