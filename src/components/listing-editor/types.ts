@@ -93,6 +93,7 @@ export interface ListingDraft {
   shopSection: string;       // VendorSection.id
   returnPolicyId: string;    // VendorReturnPolicy.id
   featured: boolean;
+  isActive: boolean;
   renewalMode: RenewalMode;
   warranty: string;
   certificateFile: File | null;       // new upload for cert scan
@@ -156,6 +157,7 @@ export const EMPTY_DRAFT: ListingDraft = {
   shopSection: '',
   returnPolicyId: '',
   featured: false,
+  isActive: true,
   renewalMode: 'AUTOMATIC',
   warranty: '',
   certificateFile: null,

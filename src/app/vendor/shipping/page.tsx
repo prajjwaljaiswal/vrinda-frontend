@@ -64,6 +64,27 @@ export default function VendorShippingPage() {
         subtitle="Pickup address, carrier accounts, and the methods customers see at checkout."
       />
 
+      {/* Setup sequence guide */}
+      <div className="mb-6 bg-brand-50 border border-brand-200 rounded-md px-4 py-3 flex flex-wrap gap-4 text-sm text-ink-700">
+        <span className="font-semibold text-brand-700 shrink-0">Setup order:</span>
+        <span className="flex items-center gap-1.5">
+          <span className="w-5 h-5 rounded-full bg-brand-600 text-white text-[11px] font-bold flex items-center justify-center shrink-0">1</span>
+          Set your <button onClick={() => setTab('address')} className="text-brand-700 font-medium hover:underline">Pickup address</button>
+        </span>
+        <span className="text-ink-400">→</span>
+        <span className="flex items-center gap-1.5">
+          <span className="w-5 h-5 rounded-full bg-brand-600 text-white text-[11px] font-bold flex items-center justify-center shrink-0">2</span>
+          Add &amp; verify <button onClick={() => setTab('accounts')} className="text-brand-700 font-medium hover:underline">Carrier accounts</button>
+          <span className="text-ink-400 text-xs">(optional — skip for manual dispatch)</span>
+        </span>
+        <span className="text-ink-400">→</span>
+        <span className="flex items-center gap-1.5">
+          <span className="w-5 h-5 rounded-full bg-brand-600 text-white text-[11px] font-bold flex items-center justify-center shrink-0">3</span>
+          Create <button onClick={() => setTab('methods')} className="text-brand-700 font-medium hover:underline">Shipping methods</button>
+          <span className="text-ink-400 text-xs">(shown to customers at checkout)</span>
+        </span>
+      </div>
+
       <div className="flex gap-2 border-b border-line mb-6">
         <TabBtn active={tab === 'address'} onClick={() => setTab('address')}>Pickup address</TabBtn>
         <TabBtn active={tab === 'accounts'} onClick={() => setTab('accounts')}>Carrier accounts</TabBtn>
@@ -334,6 +355,8 @@ function AccountModal({
         toast.success('Updated');
       }
       await onSaved();
+    } catch (e: any) {
+      toast.error(e?.message || 'Failed to save carrier account');
     } finally {
       setSaving(false);
     }
@@ -558,12 +581,24 @@ function MethodModal({
 
   async function save(e: React.FormEvent) {
     e.preventDefault();
+
+    // Client-side guard: ETA range
+    if (Number(form.etaMaxDays) < Number(form.etaMinDays)) {
+      toast.error('ETA max days must be ≥ min days');
+      return;
+    }
+    // Client-side guard: LIVE needs a carrier account selected
+    if (form.rateMode === 'LIVE' && !form.carrierAccountId) {
+      toast.error('Select a verified carrier account for live rates');
+      return;
+    }
+
     setSaving(true);
     try {
       let carrier = form.carrier;
       if (form.rateMode === 'LIVE') {
         const acct = accounts.find((a) => a.id === form.carrierAccountId);
-        if (!acct) throw new Error('Pick a verified carrier account for live rates');
+        if (!acct) throw new Error('Carrier account not found');
         carrier = acct.carrier;
       }
       const zones = form.zonesText.split(',').map((z) => z.trim()).filter(Boolean);
@@ -589,6 +624,8 @@ function MethodModal({
         toast.success('Method added');
       }
       await onSaved();
+    } catch (e: any) {
+      toast.error(e?.message || 'Failed to save shipping method');
     } finally {
       setSaving(false);
     }

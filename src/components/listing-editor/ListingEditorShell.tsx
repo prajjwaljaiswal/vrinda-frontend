@@ -33,7 +33,7 @@ export function ListingEditorShell({ productId }: ListingEditorShellProps = {}) 
       // Edit mode: load product from API; ignore the new-listing localStorage draft.
       (async () => {
         try {
-          const p = await api<any>(`/api/products/${productId}`, { auth: false });
+          const p = await api<any>(`/api/products/vendor/${productId}`);
           setDraftState({
             ...EMPTY_DRAFT,
             existingImages: p.images ?? [],
@@ -100,6 +100,7 @@ export function ListingEditorShell({ productId }: ListingEditorShellProps = {}) 
             shopSection: p.shopSection?.id ?? '',
             returnPolicyId: p.returnPolicy?.id ?? '',
             featured: p.featured ?? false,
+            isActive: p.isActive ?? true,
             renewalMode: p.renewalMode ?? 'AUTOMATIC',
             whenMade: p.whenMade ?? '',
           });
@@ -183,6 +184,7 @@ export function ListingEditorShell({ productId }: ListingEditorShellProps = {}) 
       fd.append('renewalMode',   draft.renewalMode);
       fd.append('acceptsOffers', String(draft.acceptsOffers));
       fd.append('featured',      String(draft.featured));
+      if (isEdit) fd.append('isActive', String(draft.isActive));
       if (draft.sku.trim())          fd.append('sku',       draft.sku.trim());
       if (draft.tags.length > 0)     fd.append('tags',      JSON.stringify(draft.tags));
       // Materials: real multi-chip list, falling back to legacy metalType for back-compat.

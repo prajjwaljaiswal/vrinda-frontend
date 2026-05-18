@@ -99,6 +99,16 @@ export const useCart = create<CartState>()(
             .add({ productId: item.productId, quantity: qty, variationComboId: item.variationComboId })
             .then((c) => set(applyServerCart(c)))
             .catch(() => {
+              // Roll back the optimistic add so the cart stays consistent with the server.
+              set((s) => {
+                const key = lineKey(item);
+                const prev = s.items.find((i) => lineKey(i) === key);
+                if (!prev) return s;
+                const reverted = prev.quantity - qty <= 0
+                  ? s.items.filter((i) => lineKey(i) !== key)
+                  : s.items.map((i) => lineKey(i) === key ? { ...i, quantity: i.quantity - qty } : i);
+                return { items: reverted };
+              });
               get().hydrate();
             });
         }

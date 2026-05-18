@@ -6,8 +6,50 @@ import { api } from '@/lib/api';
 import { PageHeader, KpiCard, StatusPill, Card } from '@/components/dashboard/DashboardShell';
 import { useCurrency, formatPrice } from '@/lib/currency';
 
-interface Vendor { id: string; shopName: string; status: string; kycStatus?: string; kycRejectionNote?: string | null; }
-interface Product { id: string; name: string; price: string; stockQuantity: number; isActive: boolean; images: string[]; }
+interface ConfirmState {
+  title: string;
+  message: string;
+  confirmLabel: string;
+  danger?: boolean;
+  onConfirm: () => Promise<void>;
+}
+
+function ConfirmModal({ state, onClose }: { state: ConfirmState; onClose: () => void }) {
+  const [busy, setBusy] = useState(false);
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-ink-900/50 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative bg-surface border border-line rounded-lg shadow-2xl w-full max-w-sm p-6">
+        <h2 className="font-display text-lg font-semibold text-ink-900 mb-2">{state.title}</h2>
+        <p className="text-sm text-ink-700 mb-6">{state.message}</p>
+        <div className="flex items-center justify-end gap-3">
+          <button type="button" onClick={onClose} disabled={busy}
+            className="px-4 h-9 rounded-pill border border-line text-sm font-semibold text-ink-700 hover:bg-canvas disabled:opacity-40">
+            Cancel
+          </button>
+          <button
+            type="button"
+            disabled={busy}
+            onClick={async () => {
+              setBusy(true);
+              try { await state.onConfirm(); onClose(); }
+              finally { setBusy(false); }
+            }}
+            className={[
+              'px-4 h-9 rounded-pill text-sm font-semibold text-white disabled:opacity-40',
+              state.danger ? 'bg-danger hover:bg-red-700' : 'bg-brand-600 hover:bg-brand-700',
+            ].join(' ')}
+          >
+            {busy ? 'Please wait…' : state.confirmLabel}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+interface Vendor { id: string; slug: string; shopName: string; status: string; kycStatus?: string; kycRejectionNote?: string | null; }
+interface Product { id: string; slug: string | null; name: string; price: string; stockQuantity: number; isActive: boolean; images: string[]; }
 interface DashboardKpis {
   todayRevenue: number;
   last7Revenue: number;
@@ -26,6 +68,7 @@ export default function VendorDashboard() {
   const [products, setProducts] = useState<Product[]>([]);
   const [kpis, setKpis] = useState<DashboardKpis | null>(null);
   const [loading, setLoading] = useState(true);
+  const [confirm, setConfirm] = useState<ConfirmState | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -226,9 +269,28 @@ export default function VendorDashboard() {
                       </span>
                     </td>
                     <td className="px-5 py-3">
-                      {p.isActive
-                        ? <StatusPill tone="success">Active</StatusPill>
-                        : <StatusPill tone="neutral">Hidden</StatusPill>}
+                      <button
+                        type="button"
+                        onClick={() => setConfirm({
+                          title: p.isActive ? 'Hide listing' : 'Make listing active',
+                          message: p.isActive
+                            ? `"${p.name}" will no longer be visible to shoppers.`
+                            : `"${p.name}" will become visible to shoppers.`,
+                          confirmLabel: p.isActive ? 'Hide' : 'Make Active',
+                          onConfirm: async () => {
+                            const fd = new FormData();
+                            fd.append('isActive', String(!p.isActive));
+                            await api(`/api/products/${p.id}`, { method: 'PUT', body: fd });
+                            setProducts((prev) => prev.map((x) => x.id === p.id ? { ...x, isActive: !p.isActive } : x));
+                          },
+                        })}
+                        title={p.isActive ? 'Click to hide' : 'Click to make active'}
+                        className="inline-flex items-center gap-1"
+                      >
+                        {p.isActive
+                          ? <StatusPill tone="success">Active ↕</StatusPill>
+                          : <StatusPill tone="neutral">Hidden ↕</StatusPill>}
+                      </button>
                     </td>
                     <td className="px-5 py-3 text-right">
                       <div className="inline-flex items-center gap-3">
@@ -245,7 +307,27 @@ export default function VendorDashboard() {
                         >
                           Duplicate
                         </button>
-                        <Link href={`/products/${p.id}`} className="text-sm text-ink-700 hover:text-brand-700">View ↗</Link>
+                        <Link
+                          href={vendor && p.slug ? `/store/${vendor.slug}/${p.slug}` : `/products/${p.id}`}
+                          target="_blank"
+                          className="text-sm text-ink-700 hover:text-brand-700"
+                        >View ↗</Link>
+                        <button
+                          type="button"
+                          onClick={() => setConfirm({
+                            title: 'Remove listing',
+                            message: `"${p.name}" will be permanently deleted. This cannot be undone.`,
+                            confirmLabel: 'Remove',
+                            danger: true,
+                            onConfirm: async () => {
+                              await api(`/api/products/${p.id}`, { method: 'DELETE' });
+                              setProducts((prev) => prev.filter((x) => x.id !== p.id));
+                            },
+                          })}
+                          className="text-sm text-danger hover:text-red-700"
+                        >
+                          Remove
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -255,6 +337,7 @@ export default function VendorDashboard() {
           </div>
         )}
       </Card>
+      {confirm && <ConfirmModal state={confirm} onClose={() => setConfirm(null)} />}
     </div>
   );
 }

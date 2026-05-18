@@ -15,6 +15,8 @@ interface OrderItem {
   shippingCost: string | null;
   trackingNumber: string | null;
   trackingUrl: string | null;
+  dispatchedAt: string | null;
+  deliveredAt: string | null;
   product: { id: string; name: string; images: string[] };
   vendor: { id: string; shopName: string };
 }
@@ -222,6 +224,17 @@ export default function OrderDetailPage() {
                             <span className="text-ink-700 font-medium">Shipping:</span> {it.shippingCarrier}
                             {it.shippingService ? ` · ${it.shippingService}` : ''}
                             {it.trackingNumber ? ` · AWB ${it.trackingNumber}` : ''}
+                          </p>
+                        )}
+                        {it.dispatchedAt && (
+                          <p className="text-xs text-ink-500 mt-0.5">
+                            <span className="text-ink-700 font-medium">Shipped on:</span>{' '}
+                            {new Date(it.dispatchedAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                          </p>
+                        )}
+                        {it.deliveredAt && (
+                          <p className="text-xs text-emerald-600 font-medium mt-0.5">
+                            Delivered on {new Date(it.deliveredAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
                           </p>
                         )}
                       </div>

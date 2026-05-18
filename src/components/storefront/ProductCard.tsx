@@ -5,11 +5,12 @@ import { useCurrency, formatPrice } from '@/lib/currency';
 
 export interface ProductCardData {
   id: string;
+  slug?: string | null;
   name: string;
   price: string | number;
   mrp?: string | number | null;
   images: string[];
-  vendor: { shopName: string };
+  vendor: { shopName: string; slug?: string | null };
   rating?: number;
   reviewCount?: number;
   freeShipping?: boolean;
@@ -35,9 +36,13 @@ export function ProductCard({ product }: { product: ProductCardData }) {
   const hasVariationRange = comboPrices.length > 0 && minPrice !== maxPrice;
   const displayPrice = hasVariationRange ? minPrice : Number(product.price);
 
+  const productHref = product.vendor.slug && product.slug
+    ? `/store/${product.vendor.slug}/${product.slug}`
+    : `/products/${product.id}`;
+
   return (
     <Link
-      href={`/products/${product.id}`}
+      href={productHref}
       className="group relative block rounded-md overflow-hidden bg-transparent transition hover:shadow-pop"
     >
       <div className="relative aspect-square bg-stone-100 rounded-md overflow-hidden">

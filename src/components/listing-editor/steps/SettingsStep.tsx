@@ -42,6 +42,22 @@ export function SettingsStep({ draft, setDraft }: StepProps) {
         </Field>
 
         <button type="button"
+          onClick={() => setDraft({ isActive: !draft.isActive })}
+          className="w-full flex items-start gap-3 p-3 rounded-md border border-line bg-canvas hover:bg-surface text-left transition">
+          <span className={['mt-0.5 h-5 w-9 rounded-full transition-colors shrink-0 relative', draft.isActive ? 'bg-brand-600' : 'bg-ink-300'].join(' ')}>
+            <span className={['absolute top-0.5 h-4 w-4 bg-white rounded-full shadow transition-transform', draft.isActive ? 'translate-x-4' : 'translate-x-0.5'].join(' ')} />
+          </span>
+          <span className="flex-1 min-w-0">
+            <span className="block text-sm font-semibold text-ink-900">
+              Listing visible {draft.isActive ? <span className="text-emerald-600">(Active)</span> : <span className="text-ink-500">(Hidden)</span>}
+            </span>
+            <span className="block text-xs text-ink-500 mt-0.5">
+              Turn off to hide this listing from shoppers without deleting it.
+            </span>
+          </span>
+        </button>
+
+        <button type="button"
           onClick={() => setDraft({ featured: !draft.featured })}
           className="w-full flex items-start gap-3 p-3 rounded-md border border-line bg-canvas hover:bg-surface text-left transition">
           <span className={['mt-0.5 h-5 w-9 rounded-full transition-colors shrink-0 relative', draft.featured ? 'bg-brand-600' : 'bg-ink-300'].join(' ')}>

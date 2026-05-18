@@ -51,6 +51,7 @@ export const cartApi = {
     api<ServerCart>('/api/cart/items', {
       method: 'POST',
       body: JSON.stringify(input),
+      silent: true,
     }),
   updateQty: (itemId: string, quantity: number) =>
     api<ServerCart>(`/api/cart/items/${itemId}`, {
